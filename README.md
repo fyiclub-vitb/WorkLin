@@ -254,6 +254,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **GitHub**: [https://github.com/fyiclub-vitb/WorkLin](https://github.com/fyiclub-vitb/WorkLin)
 - **Live Demo**: [https://worklin-fyi.vercel.app](https://worklin-fyi.vercel.app)
 
+## Discussions 
+💬 Have questions or doubts?
+Please use the **Discussions** tab to ask and interact with maintainers.
+
 ---
 
 Made with ❤️ by the WorkLin team
