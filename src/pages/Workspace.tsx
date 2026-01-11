@@ -16,6 +16,7 @@ export const Workspace: React.FC = () => {
     addPage,
     deletePage,
     updatePageTitle,
+    updatePageCover,
     addBlock,
     updateBlock,
     deleteBlock,
@@ -40,10 +41,11 @@ export const Workspace: React.FC = () => {
         e.preventDefault();
         setSidebarOpen((prev) => !prev);
       }
-      // Cmd/Ctrl + K for search (future)
+      // Cmd/Ctrl + K for search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        // TODO: Open search - See GITHUB_ISSUES.md issue #10
+        // The search hook in Sidebar handles focus, 
+        // but we might want to ensure Sidebar is open here if we wanted strictly global control
       }
     };
 
@@ -92,6 +94,9 @@ export const Workspace: React.FC = () => {
         }
         onUpdatePageTitle={(title) =>
           currentPageId && updatePageTitle(currentPageId, title)
+        }
+        onUpdatePageCover={(url) => 
+          currentPageId && updatePageCover(currentPageId, url)
         }
       />
       <Toaster />
