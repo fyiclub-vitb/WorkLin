@@ -45,6 +45,7 @@
     "firebase": "^11.1.0",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.462.0",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
@@ -56,6 +57,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.3.1",
