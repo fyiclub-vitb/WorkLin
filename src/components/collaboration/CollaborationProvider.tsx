@@ -21,6 +21,13 @@ const CollaborationContext = createContext<CollaborationContextType>({
 });
 
 export const useCollaboration = () => useContext(CollaborationContext);
+import React, { useEffect, useState } from 'react';
+
+// @ts-ignore
+import { WebrtcProvider } from 'y-websocket';
+// TODO: Implement real-time collaboration using Yjs
+// This is a placeholder for contributors to implement
+// See issue #X for details
 
 interface CollaborationProviderProps {
   pageId: string;
@@ -31,6 +38,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
   pageId,
   children,
 }) => {
+
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -38,6 +46,9 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
   
   // Get a persistent color for this session
   const userColor = useRef(getRandomUserColor()).current;
+
+  const [provider, setProvider] = useState<WebrtcProvider | null>(null);
+
 
   // 1. Listen for Authentication
   useEffect(() => {
@@ -63,8 +74,16 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
     setIsReady(true);
 
     return () => {
+
       wsProvider.destroy();
       doc.destroy();
+
+      // Cleanup
+      if (provider) {
+        provider.destroy();
+      }
+
+
     };
   }, [pageId]);
 
