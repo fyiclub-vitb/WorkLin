@@ -1,9 +1,3 @@
-import React, { useState } from 'react';
-import { Plus, Search, Settings, Menu, X, FileText, Home, Star, Trash2 } from 'lucide-react';
-import { Page } from '../types/workspace';
-import { motion, AnimatePresence } from 'framer-motion';
-// NEW CODE: Import the picker
-import { IconPicker } from './ui/icon-picker';
 import React from 'react';
 import { Plus, Search, Settings, X, FileText, Home, Star, Trash2 } from 'lucide-react';
 import { Page } from '../types/workspace';
@@ -16,8 +10,6 @@ interface SidebarProps {
   onSelectPage: (pageId: string) => void;
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
-  // NEW CODE: Added this prop to handle icon updates
-  onUpdatePage?: (pageId: string, newIcon: string) => void; 
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
 }
@@ -51,7 +43,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectPage,
   onAddPage,
   onDeletePage,
-  onUpdatePage, // Destructure the new prop
   sidebarOpen,
   setSidebarOpen,
 }) => {
@@ -179,17 +170,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                     onClick={() => onSelectPage(page.id)}
                   >
-                    {/* NEW CODE: Wrapped the icon in the IconPicker */}
-                    <div onClick={(e) => e.stopPropagation()}>
-                        <IconPicker onChange={(icon) => onUpdatePage?.(page.id, icon)}>
-                             <span className="text-base flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-0.5 transition-colors cursor-pointer">
-                                {page.icon}
-                             </span>
-                        </IconPicker>
-                    </div>
-                    {/* END NEW CODE */}
-                    
-                    <span className="flex-1 text-sm font-medium truncate">{page.title}</span>
                     <span className="text-base flex-shrink-0">{page.icon}</span>
                     <span className="flex-1 text-sm font-medium truncate">
                       <HighlightedText text={page.title} highlight={searchQuery} />
