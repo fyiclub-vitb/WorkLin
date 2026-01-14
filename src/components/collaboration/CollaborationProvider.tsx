@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import * as Y from 'yjs';
+
+// @ts-ignore
 import { WebrtcProvider } from 'y-websocket';
 // TODO: Implement real-time collaboration using Yjs
 // This is a placeholder for contributors to implement
@@ -14,9 +15,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
   pageId,
   children,
 }) => {
-  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebrtcProvider | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     // TODO: Initialize Yjs document
@@ -30,9 +29,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
       if (provider) {
         provider.destroy();
       }
-      if (ydoc) {
-        ydoc.destroy();
-      }
+
     };
   }, [pageId]);
 

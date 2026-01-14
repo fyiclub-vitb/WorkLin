@@ -3,6 +3,11 @@ import { Page, BlockType, Block } from "../types/workspace";
 import { Block as BlockComponent } from "./Block";
 import { Plus, MoreHorizontal, History } from "lucide-react";
 import { motion } from "framer-motion";
+import React from 'react';
+import { Page, BlockType, Block } from '../types/workspace';
+import { Block as BlockComponent } from './Block';
+import { Plus } from 'lucide-react'; // Removed MoreHorizontal as it's no longer needed
+import { motion } from 'framer-motion';
 // FIX: Import from the correct location in 'src/pages/'
 import { PageCover } from "../pages/PageCover";
 import { ExportMenu } from "./page/ExportMenu";
@@ -13,8 +18,8 @@ interface PageEditorProps {
   onAddBlock: (type: BlockType) => void;
   onUpdateBlock: (blockId: string, updates: Partial<Block>) => void;
   onDeleteBlock: (blockId: string) => void;
-  onUpdatePageTitle: (title: string) => void;
-  onUpdatePageCover: (url: string | null) => void;
+  // This prop is passed from Workspace but not used here anymore (handled by PageHeader)
+  onUpdatePageTitle: (title: string) => void; 
 }
 
 export const PageEditor: React.FC<PageEditorProps> = ({
@@ -22,8 +27,6 @@ export const PageEditor: React.FC<PageEditorProps> = ({
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
-  onUpdatePageTitle,
-  onUpdatePageCover,
 }) => {
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -35,6 +38,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
       titleInputRef.current.select();
     }
   }, [isTitleEditing]);
+  // Removed local state for title editing (isTitleEditing, titleInputRef)
 
   if (!page) {
     return (
@@ -56,13 +60,18 @@ export const PageEditor: React.FC<PageEditorProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-[#1e1e1e] overflow-hidden">
-      {/* Page Header with Cover */}
-      <PageCover
-        url={page.cover}
-        pageId={page.id}
-        workspaceId={page.workspaceId}
-        onUpdate={onUpdatePageCover}
-      />
+      
+      {/* REMOVED: Old Title Input & Menu Button 
+          KEPT: Cover Image & Icon support (optional)
+      */}
+      <div className="relative">
+        {/* Cover Image Placeholder - Only renders if cover exists */}
+        {page.cover && (
+          <div
+            className="h-48 w-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${page.cover})` }}
+          />
+        )}
 
       {/* Page Content Container */}
       <div className="flex-1 overflow-y-auto">
@@ -99,6 +108,13 @@ export const PageEditor: React.FC<PageEditorProps> = ({
               </button>
             </div>
           </div>
+        {/* Page Icon (if exists) */}
+        {page.icon && (
+           <div className="max-w-4xl mx-auto px-16 pt-12 pb-4">
+             <div className="text-5xl mt-1">{page.icon}</div>
+           </div>
+        )}
+      </div>
 
           {/* Blocks Container */}
           <div className="mt-8">

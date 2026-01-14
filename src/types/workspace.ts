@@ -1,9 +1,11 @@
-export type BlockType = 
-  | 'paragraph' 
-  | 'heading1' 
-  | 'heading2' 
-  | 'heading3' 
-  | 'bulleted-list' 
+import { BlockPermission } from './permission';
+
+export type BlockType =
+  | 'paragraph'
+  | 'heading1'
+  | 'heading2'
+  | 'heading3'
+  | 'bulleted-list'
   | 'numbered-list'
   | 'checkbox'
   | 'code'
@@ -12,7 +14,8 @@ export type BlockType =
   | 'image'
   | 'table'
   | 'toggle'
-  | 'callout';
+  | 'callout'
+  | 'ai'; // Added AI block type
 
 export interface Block {
   id: string;
@@ -25,6 +28,9 @@ export interface Block {
   parentId?: string; // For nested blocks (toggle lists)
   createdAt?: Date;
   updatedAt?: Date;
+  createdBy?: string;
+  lastEditedBy?: string;
+  permissions?: BlockPermission;
 }
 
 export interface Page {

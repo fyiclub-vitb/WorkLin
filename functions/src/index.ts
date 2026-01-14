@@ -107,7 +107,66 @@ export const logAuditEvent = functions.https.onCall(async (data, context) => {
   await db.collection('auditLogs').add(auditLog);
 
   return { success: true };
+
 });
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+/**
+ * Callable function: Process AI Writing Actions
+ * Securely uses the Gemini API key from the backend environment
+ */
+export const processAIAction = functions
+  .runWith({ secrets: ['GEMINI_API_KEY'] }) // Ensures the function has access to the secret
+  .https.onCall(async (data, context) => {
+    // 1. Authentication Check
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { prompt, task, targetLanguage, tone } = data.data;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new functions.https.HttpsError('failed-precondition', 'AI API Key is not configured on the server.');
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      // 2. Build the System Prompt (Inspired by MindTrace's llm_evaluator logic)
+      let systemPrompt = "";
+      switch (task) {
+        case 'summarize':
+          systemPrompt = "Summarize the following text concisely while keeping the key points:";
+          break;
+        case 'translate':
+          systemPrompt = `Translate the following text accurately into ${targetLanguage || 'English'}:`;
+          break;
+        case 'tone':
+          systemPrompt = `Rewrite the following text to have a ${tone || 'professional'} tone:`;
+          break;
+        case 'improve':
+          systemPrompt = "Improve the clarity, grammar, and flow of the following text while maintaining its original meaning:";
+          break;
+        default:
+          systemPrompt = "Act as a helpful writing assistant. Respond to the following prompt:";
+      }
+
+      const finalPrompt = `${systemPrompt}\n\n"${prompt}"\n\nReturn ONLY the revised text.`;
+
+      // 3. Generate Content
+      const result = await model.generateContent(finalPrompt);
+      const response = await result.response;
+      const text = response.text();
+
+      return { text };
+    } catch (error) {
+      console.error("Gemini API Error:", error);
+      throw new functions.https.HttpsError('internal', 'AI Service failed to process the request.');
+    }
+  });
 
 /**
  * Callable function: Generate 2FA secret

@@ -188,6 +188,7 @@ export const useWorkspace = () => {
                 checked: false,
                 createdAt: new Date(),
                 updatedAt: new Date(),
+                createdBy: 'local-user',
               },
             ],
             updatedAt: new Date(),
