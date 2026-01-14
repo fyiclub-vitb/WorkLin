@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Block as BlockType } from '../types/workspace';
 import { Trash2, GripVertical } from 'lucide-react';
 import { BlockTypeSelector } from './BlockTypeSelector';
+import { BlockPermissionSelector } from './BlockPermissionSelector';
+import { useWorkspaceStore } from '../store/workspaceStore';
+import { canEditBlock } from '../lib/firebase/block-permissions';
 import { motion } from 'framer-motion';
 
 interface BlockProps {
@@ -17,6 +20,14 @@ export const Block: React.FC<BlockProps> = ({
   onDelete,
   onAddBlock,
 }) => {
+  const { user } = useWorkspaceStore();
+  // Fallback to 'local-user' for demo if user is null, but ideally we rely on auth.
+  // In this demo app structure, 'local-user' creates blocks.
+  const userId = user?.uid || 'local-user';
+
+  const canEdit = canEditBlock(block, userId);
+  const canChangePermissions = block.createdBy === userId; // Only creator can change permissions for now
+
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -34,17 +45,19 @@ export const Block: React.FC<BlockProps> = ({
   }, [isEditing]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!canEdit) return; // Prevent key actions if readonly
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       setIsEditing(false);
       onAddBlock();
     }
     if (e.key === 'Backspace' && inputRef.current) {
-      const input = inputRef.current instanceof HTMLTextAreaElement 
-        ? inputRef.current 
+      const input = inputRef.current instanceof HTMLTextAreaElement
+        ? inputRef.current
         : (inputRef.current as HTMLInputElement);
       const value = input.value;
-      
+
       // Delete block if field is empty (works whether editing or not)
       // This matches Notion's behavior: empty block + Backspace = delete block
       if (value === '') {
@@ -70,7 +83,7 @@ export const Block: React.FC<BlockProps> = ({
 
   const updateText = (newText: string) => {
     // Update both text and content for compatibility
-    onUpdate({ 
+    onUpdate({
       text: newText,
       content: newText, // Simple text for now, can be enhanced with HTML later
     });
@@ -93,6 +106,7 @@ export const Block: React.FC<BlockProps> = ({
             onBlur={() => setIsEditing(false)}
             placeholder="Heading 1"
             className={`${commonClasses} text-3xl font-bold mt-1 mb-2`}
+            readOnly={!canEdit}
           />
         );
       case 'heading2':
@@ -107,6 +121,7 @@ export const Block: React.FC<BlockProps> = ({
             onBlur={() => setIsEditing(false)}
             placeholder="Heading 2"
             className={`${commonClasses} text-2xl font-semibold mt-1 mb-2`}
+            readOnly={!canEdit}
           />
         );
       case 'heading3':
@@ -121,6 +136,7 @@ export const Block: React.FC<BlockProps> = ({
             onBlur={() => setIsEditing(false)}
             placeholder="Heading 3"
             className={`${commonClasses} text-xl font-semibold mt-1 mb-2`}
+            readOnly={!canEdit}
           />
         );
       case 'bulleted-list':
@@ -137,6 +153,7 @@ export const Block: React.FC<BlockProps> = ({
               onBlur={() => setIsEditing(false)}
               placeholder="List item"
               className={`${commonClasses} flex-1`}
+              readOnly={!canEdit}
             />
           </div>
         );
@@ -146,8 +163,9 @@ export const Block: React.FC<BlockProps> = ({
             <input
               type="checkbox"
               checked={block.checked || false}
-              onChange={(e) => onUpdate({ checked: e.target.checked })}
+              onChange={(e) => canEdit && onUpdate({ checked: e.target.checked })}
               className="mt-2 cursor-pointer w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              disabled={!canEdit}
             />
             <input
               ref={inputRef as React.Ref<HTMLInputElement>}
@@ -158,9 +176,9 @@ export const Block: React.FC<BlockProps> = ({
               onFocus={() => setIsEditing(true)}
               onBlur={() => setIsEditing(false)}
               placeholder="Todo item"
-              className={`${commonClasses} flex-1 ${
-                block.checked ? 'line-through text-gray-400 dark:text-gray-600' : ''
-              }`}
+              className={`${commonClasses} flex-1 ${block.checked ? 'line-through text-gray-400 dark:text-gray-600' : ''
+                }`}
+              readOnly={!canEdit}
             />
           </div>
         );
@@ -182,6 +200,7 @@ export const Block: React.FC<BlockProps> = ({
               target.style.height = 'auto';
               target.style.height = target.scrollHeight + 'px';
             }}
+            readOnly={!canEdit}
           />
         );
     }
@@ -200,7 +219,12 @@ export const Block: React.FC<BlockProps> = ({
         </button>
         <BlockTypeSelector
           currentType={block.type}
-          onChange={(type) => onUpdate({ type })}
+          onChange={(type) => canEdit && onUpdate({ type })}
+        />
+        <BlockPermissionSelector
+          currentType={block.permissions?.type}
+          onChange={(type) => onUpdate({ permissions: { ...block.permissions, type } })}
+          readOnly={!canChangePermissions}
         />
         <button
           onClick={onDelete}
@@ -212,7 +236,7 @@ export const Block: React.FC<BlockProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0" onClick={() => !isEditing && setIsEditing(true)}>
+      <div className="flex-1 min-w-0" onClick={() => !isEditing && canEdit && setIsEditing(true)}>
         {renderContent()}
       </div>
     </div>

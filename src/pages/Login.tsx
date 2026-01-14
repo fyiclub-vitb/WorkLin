@@ -158,9 +158,13 @@ export const Login: React.FC = () => {
               <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                 <p>
                   Don't have an account?{' '}
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                  <button
+                    type="button"
+                    onClick={handleDemoLogin}
+                    className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer"
+                  >
                     Demo mode available
-                  </span>
+                  </button>
                 </p>
               </div>
             </form>
