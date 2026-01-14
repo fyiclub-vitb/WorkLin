@@ -5,6 +5,8 @@ import { PageEditor } from '../components/PageEditor';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { Menu } from 'lucide-react';
 import { Toaster } from '../components/ui/toaster';
+// FIX 1: Correct the import path (go up one folder to components)
+import { PageHeader } from '../components/PageHeader'; 
 
 export const Workspace: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +29,6 @@ export const Workspace: React.FC = () => {
   useEffect(() => {
     const demoUser = localStorage.getItem('worklin-demo-user');
     if (!demoUser) {
-      // Redirect to login if not authenticated
       navigate('/login');
     }
   }, [navigate]);
@@ -35,15 +36,12 @@ export const Workspace: React.FC = () => {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + B to toggle sidebar
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault();
         setSidebarOpen((prev) => !prev);
       }
-      // Cmd/Ctrl + K for search (future)
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        // TODO: Open search - See GITHUB_ISSUES.md issue #10
       }
     };
 
@@ -81,19 +79,38 @@ export const Workspace: React.FC = () => {
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
-      <PageEditor
-        page={currentPage}
-        onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
-        onUpdateBlock={(blockId, updates) =>
-          currentPageId && updateBlock(currentPageId, blockId, updates)
-        }
-        onDeleteBlock={(blockId) =>
-          currentPageId && deleteBlock(currentPageId, blockId)
-        }
-        onUpdatePageTitle={(title) =>
-          currentPageId && updatePageTitle(currentPageId, title)
-        }
-      />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 h-full overflow-y-auto">
+        {currentPage && (
+            <>
+                {/* FIX 2: Render PageHeader here with layout alignment */}
+                <div className="max-w-4xl mx-auto px-12 md:px-24 pt-12 pb-2">
+                    <PageHeader 
+                        pageId={currentPage.id}
+                        initialTitle={currentPage.title}
+                        onDelete={() => deletePage(currentPage.id)}
+                    />
+                </div>
+
+                <PageEditor
+                    page={currentPage}
+                    onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
+                    onUpdateBlock={(blockId, updates) =>
+                        currentPageId && updateBlock(currentPageId, blockId, updates)
+                    }
+                    onDeleteBlock={(blockId) =>
+                        currentPageId && deleteBlock(currentPageId, blockId)
+                    }
+                    // We can keep this for fallback, but PageHeader now handles the title
+                    onUpdatePageTitle={(title) =>
+                        currentPageId && updatePageTitle(currentPageId, title)
+                    }
+                />
+            </>
+        )}
+      </div>
+      
       <Toaster />
     </div>
   );

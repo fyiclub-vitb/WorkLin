@@ -4,6 +4,7 @@ import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Workspace } from './pages/Workspace';
 import { Toaster } from './components/ui/toaster';
+import { PageHeader } from './components/PageHeader'; // Adjust path if needed
 
 function App() {
   return (
