@@ -20,12 +20,12 @@ export type BlockType =
 export interface Block {
   id: string;
   type: BlockType;
-  content?: string;
-  text?: string;
+  content?: string; // Rich text content (HTML/JSON)
+  text?: string; // Plain text fallback
   checked?: boolean;
-  properties?: Record<string, any>; 
-  order?: number;
-  parentId?: string;
+  properties?: Record<string, any>; // Additional properties (e.g., image URL, table data)
+  order?: number; // Block order in page
+  parentId?: string; // For nested blocks (toggle lists)
   createdAt?: Date;
   updatedAt?: Date;
   createdBy?: string;
@@ -33,4 +33,57 @@ export interface Block {
   permissions?: BlockPermission;
 }
 
-// ... rest of file remains same
+export interface Page {
+  id: string;
+  title: string;
+  icon: string;
+  cover?: string; // Cover image URL
+  blocks: Block[];
+  workspaceId?: string; // Optional for backward compatibility
+  parentId?: string; // For nested pages
+  isArchived?: boolean;
+  isPublic?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  lastEditedBy?: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  icon?: string;
+  ownerId: string;
+  members: string[]; // User IDs
+  pages: Page[];
+  createdAt: Date;
+  updatedAt: Date;
+  settings?: {
+    theme?: 'light' | 'dark' | 'auto';
+    defaultView?: 'list' | 'grid';
+  };
+}
+
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  workspaces: string[]; // Workspace IDs
+}
+
+export interface CollaborationPresence {
+  userId: string;
+  userName: string;
+  userColor: string;
+  cursor?: {
+    blockId: string;
+    position: number;
+  };
+  selection?: {
+    blockId: string;
+    start: number;
+    end: number;
+  };
+  lastSeen: Date;
+}
