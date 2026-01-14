@@ -18,6 +18,7 @@ export const Workspace: React.FC = () => {
     addPage,
     deletePage,
     updatePageTitle,
+    updatePageCover,
     addBlock,
     updateBlock,
     deleteBlock,
