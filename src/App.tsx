@@ -7,6 +7,7 @@ import { SecuritySettings } from './components/security/SecuritySettings';
 import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
 import { PageHeader } from './components/PageHeader'; // Adjust path if needed
+import { OfflineIndicator } from './components/ui/offline-indicator';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
+      <OfflineIndicator />
     </BrowserRouter>
   );
 }
