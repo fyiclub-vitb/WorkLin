@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Page, BlockType, Block } from "../types/workspace";
 import { Block as BlockComponent } from "./Block";
-import { Plus, MoreHorizontal } from "lucide-react";
+import { Plus, MoreHorizontal, History } from "lucide-react";
 import { motion } from "framer-motion";
 // FIX: Import from the correct location in 'src/pages/'
 import { PageCover } from "../pages/PageCover";
 import { ExportMenu } from "./page/ExportMenu";
+import { VersionHistory } from "./VersionHistory";
 
 interface PageEditorProps {
   page: Page | undefined;
@@ -25,6 +26,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
   onUpdatePageCover,
 }) => {
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -83,6 +85,14 @@ export const PageEditor: React.FC<PageEditorProps> = ({
               />
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowHistory(true)}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors text-sm text-gray-700 dark:text-gray-300"
+                title="View version history"
+              >
+                <History size={18} />
+                <span className="hidden sm:inline">History</span>
+              </button>
               <ExportMenu page={page} />
               <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
                 <MoreHorizontal size={20} className="text-gray-500" />
@@ -163,6 +173,19 @@ export const PageEditor: React.FC<PageEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Version History Modal */}
+      {showHistory && (
+        <VersionHistory
+          pageId={page.id}
+          currentUserId="local-user" // TODO: Replace with actual user ID from auth context
+          onClose={() => setShowHistory(false)}
+          onRestore={() => {
+            // Refresh page data after restore
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 };

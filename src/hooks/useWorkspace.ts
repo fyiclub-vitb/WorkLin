@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
+import { createVersion } from '../lib/firebase/history';
 
 const STORAGE_KEY = 'worklin-workspace';
 
 export const useWorkspace = () => {
   // FIX 1: Initialize with a complete Workspace object, not just { pages: [] }
-  const [workspace, setWorkspace] = useState<Workspace>({ 
+  const [workspace, setWorkspace] = useState<Workspace>({
     id: 'default',
     name: 'My Workspace',
     ownerId: 'local-user',
@@ -14,7 +15,7 @@ export const useWorkspace = () => {
     createdAt: new Date(),
     updatedAt: new Date()
   });
-  
+
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
 
   // Load from localStorage on mount
@@ -23,7 +24,7 @@ export const useWorkspace = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        
+
         // FIX 2: Reconstruct the full object and handle date conversions for the root object too
         // We use spread (...parsed) to keep id, name, etc., then overwrite dates and pages
         const workspaceWithDates: Workspace = {
@@ -76,7 +77,7 @@ export const useWorkspace = () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     // FIX 3: Set a full Workspace object
     const defaultWorkspace: Workspace = {
       id: 'ws-default',
@@ -102,10 +103,10 @@ export const useWorkspace = () => {
       updatedAt: new Date(),
     };
     // FIX 4: Spread ...prev to keep existing workspace properties (id, name, etc.)
-    setWorkspace((prev) => ({ 
-      ...prev, 
+    setWorkspace((prev) => ({
+      ...prev,
       pages: [...prev.pages, newPage],
-      updatedAt: new Date() 
+      updatedAt: new Date()
     }));
     setCurrentPageId(newPage.id);
   };
@@ -123,13 +124,22 @@ export const useWorkspace = () => {
   };
 
   const updatePageTitle = (pageId: string, title: string) => {
+    const oldPage = workspace.pages.find(p => p.id === pageId);
+    if (!oldPage) return;
+
     setWorkspace((prev) => ({
-      ...prev, // Spread prev
+      ...prev,
       pages: prev.pages.map((p) =>
         p.id === pageId ? { ...p, title, updatedAt: new Date() } : p
       ),
       updatedAt: new Date()
     }));
+
+    // Create version history entry
+    const newPage = { ...oldPage, title, updatedAt: new Date() };
+    createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
+      console.error('Failed to create version:', err);
+    });
   };
 
   const updatePageIcon = (pageId: string, icon: string) => {
@@ -143,13 +153,22 @@ export const useWorkspace = () => {
   };
 
   const updatePageCover = (pageId: string, cover: string | null) => {
+    const oldPage = workspace.pages.find(p => p.id === pageId);
+    if (!oldPage) return;
+
     setWorkspace((prev) => ({
-      ...prev, // Spread prev
+      ...prev,
       pages: prev.pages.map((p) =>
         p.id === pageId ? { ...p, cover: cover || undefined, updatedAt: new Date() } : p
       ),
       updatedAt: new Date()
     }));
+
+    // Create version history entry
+    const newPage = { ...oldPage, cover: cover || undefined, updatedAt: new Date() };
+    createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
+      console.error('Failed to create version:', err);
+    });
   };
 
   const addBlock = (pageId: string, type: BlockType = 'paragraph') => {
@@ -158,21 +177,21 @@ export const useWorkspace = () => {
       pages: prev.pages.map((p) =>
         p.id === pageId
           ? {
-              ...p,
-              blocks: [
-                ...p.blocks,
-                { 
-                  id: Date.now().toString(), 
-                  type, 
-                  text: '', 
-                  content: '',
-                  checked: false,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                },
-              ],
-              updatedAt: new Date(),
-            }
+            ...p,
+            blocks: [
+              ...p.blocks,
+              {
+                id: Date.now().toString(),
+                type,
+                text: '',
+                content: '',
+                checked: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+            updatedAt: new Date(),
+          }
           : p
       ),
       updatedAt: new Date()
@@ -185,12 +204,12 @@ export const useWorkspace = () => {
       pages: prev.pages.map((p) =>
         p.id === pageId
           ? {
-              ...p,
-              blocks: p.blocks.map((b) =>
-                b.id === blockId ? { ...b, ...updates } : b
-              ),
-              updatedAt: new Date(),
-            }
+            ...p,
+            blocks: p.blocks.map((b) =>
+              b.id === blockId ? { ...b, ...updates } : b
+            ),
+            updatedAt: new Date(),
+          }
           : p
       ),
       updatedAt: new Date()
@@ -203,10 +222,10 @@ export const useWorkspace = () => {
       pages: prev.pages.map((p) =>
         p.id === pageId
           ? {
-              ...p,
-              blocks: p.blocks.filter((b) => b.id !== blockId),
-              updatedAt: new Date(),
-            }
+            ...p,
+            blocks: p.blocks.filter((b) => b.id !== blockId),
+            updatedAt: new Date(),
+          }
           : p
       ),
       updatedAt: new Date()
