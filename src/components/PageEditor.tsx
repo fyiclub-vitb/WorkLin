@@ -4,7 +4,8 @@ import { Block as BlockComponent } from './Block';
 import { Plus } from 'lucide-react'; // Removed MoreHorizontal as it's no longer needed
 import { motion } from 'framer-motion';
 // FIX: Import from the correct location in 'src/pages/'
-import { PageCover } from '../pages/PageCover';
+import { PageCover } from "../pages/PageCover";
+import { ExportMenu } from "./page/ExportMenu";
 
 interface PageEditorProps {
   page: Page | undefined;
@@ -80,10 +81,14 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                     This page is empty
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                    Type <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> to insert blocks
+                    Type{" "}
+                    <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                      /
+                    </kbd>{" "}
+                    to insert blocks
                   </p>
                   <button
-                    onClick={() => onAddBlock('paragraph')}
+                    onClick={() => onAddBlock("paragraph")}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm font-medium"
                   >
                     <Plus size={16} />
@@ -104,7 +109,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                       block={block}
                       onUpdate={(updates) => onUpdateBlock(block.id, updates)}
                       onDelete={() => onDeleteBlock(block.id)}
-                      onAddBlock={() => onAddBlock('paragraph')}
+                      onAddBlock={() => onAddBlock("paragraph")}
                     />
                   </motion.div>
                 ))}
@@ -114,11 +119,20 @@ export const PageEditor: React.FC<PageEditorProps> = ({
             {/* Add Block Button */}
             <div className="mt-8 mb-12">
               <button
-                onClick={() => onAddBlock('paragraph')}
+                onClick={() => onAddBlock("paragraph")}
                 className="group flex items-center gap-2 px-3 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors w-full"
               >
-                <Plus size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="text-sm">Type <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> for commands</span>
+                <Plus
+                  size={18}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+                <span className="text-sm">
+                  Type{" "}
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                    /
+                  </kbd>{" "}
+                  for commands
+                </span>
               </button>
             </div>
           </div>

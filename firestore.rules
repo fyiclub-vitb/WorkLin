@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+        request.auth.token.admin == true;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Workspaces
+    match /workspaces/{workspaceId} {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.ownerId || 
+         request.auth.uid in resource.data.members);
+    }
+    
+    // Pages
+    match /pages/{pageId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.createdBy;
+    }
+    
+    // Blocks
+    match /blocks/{blockId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Audit Logs
+    match /auditLogs/{logId} {
+      // Users can read their own logs, admins can read all
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      // Only system/Cloud Functions can write audit logs
+      allow write: if false; // Cloud Functions use admin SDK, bypassing rules
+    }
+    
+    // User Security Settings
+    match /userSecurity/{userId} {
+      // Users can read/write their own security settings, admins can read all
+      allow read: if request.auth != null && 
+        (isOwner(userId) || isAdmin());
+      allow write: if request.auth != null && isOwner(userId);
+    }
+    
+    // Security Alerts
+    match /securityAlerts/{alertId} {
+      // Users can read their own alerts, admins can read all
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      // Only system/Cloud Functions can write security alerts
+      allow write: if false; // Cloud Functions use admin SDK, bypassing rules
+    }
+  }
+}
+
