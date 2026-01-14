@@ -137,7 +137,5 @@ export const PageEditor: React.FC<PageEditorProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
   );
 };
