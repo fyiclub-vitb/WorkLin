@@ -6,6 +6,7 @@ import { BlockPermissionSelector } from './BlockPermissionSelector';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { canEditBlock } from '../lib/firebase/block-permissions';
 import { motion } from 'framer-motion';
+import { AIBlock } from './editor/AIBlock';
 
 interface BlockProps {
   block: BlockType;
@@ -94,6 +95,13 @@ export const Block: React.FC<BlockProps> = ({
     const textValue = getTextValue();
 
     switch (block.type) {
+      case 'ai':
+        return (
+          <AIBlock 
+            block={block} 
+            onUpdate={onUpdate} 
+          />
+        );
       case 'heading1':
         return (
           <input
