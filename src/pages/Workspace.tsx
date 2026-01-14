@@ -6,11 +6,13 @@ import { AdvancedSearch } from '../components/search/AdvancedSearch';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { Menu } from 'lucide-react';
 import { Toaster } from '../components/ui/toaster';
+import { PageHeader } from '../components/PageHeader';
 
 export const Workspace: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSearchView = location.pathname === '/app/search';
+
   const {
     workspace,
     currentPage,
@@ -19,6 +21,7 @@ export const Workspace: React.FC = () => {
     addPage,
     deletePage,
     updatePageTitle,
+    updatePageIcon,
     updatePageCover,
     addBlock,
     updateBlock,
@@ -31,7 +34,6 @@ export const Workspace: React.FC = () => {
   useEffect(() => {
     const demoUser = localStorage.getItem('worklin-demo-user');
     if (!demoUser) {
-      // Redirect to login if not authenticated
       navigate('/login');
     }
   }, [navigate]);
@@ -39,16 +41,12 @@ export const Workspace: React.FC = () => {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + B to toggle sidebar
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault();
         setSidebarOpen((prev) => !prev);
       }
-      // Cmd/Ctrl + K for search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        // The search hook in Sidebar handles focus, 
-        // but we might want to ensure Sidebar is open here if we wanted strictly global control
       }
     };
 
@@ -83,31 +81,49 @@ export const Workspace: React.FC = () => {
             deletePage(pageId);
           }
         }}
+        // NEW: Connect the sidebar's update request to your logic
+        onUpdatePage={(pageId, icon) => updatePageIcon(pageId, icon)}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
+
       {isSearchView ? (
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
           <AdvancedSearch />
         </div>
       ) : (
-        <PageEditor
-          page={currentPage}
-          onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
-          onUpdateBlock={(blockId, updates) =>
-            currentPageId && updateBlock(currentPageId, blockId, updates)
-          }
-          onDeleteBlock={(blockId) =>
-            currentPageId && deleteBlock(currentPageId, blockId)
-          }
-          onUpdatePageTitle={(title) =>
-            currentPageId && updatePageTitle(currentPageId, title)
-          }
-          onUpdatePageCover={(url) =>
-            currentPageId && updatePageCover(currentPageId, url)
-          }
-        />
+        <div className="flex-1 h-full overflow-y-auto">
+          {currentPage && (
+            <>
+              <div className="max-w-4xl mx-auto px-12 md:px-24 pt-12 pb-2">
+                <PageHeader
+                  pageId={currentPage.id}
+                  initialTitle={currentPage.title}
+                  onDelete={() => deletePage(currentPage.id)}
+                />
+              </div>
+
+              <PageEditor
+                page={currentPage}
+                onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
+                onUpdateBlock={(blockId, updates) =>
+                  currentPageId && updateBlock(currentPageId, blockId, updates)
+                }
+                onDeleteBlock={(blockId) =>
+                  currentPageId && deleteBlock(currentPageId, blockId)
+                }
+                onUpdatePageTitle={(title) =>
+                  currentPageId && updatePageTitle(currentPageId, title)
+                }
+                onUpdatePageCover={(url) =>
+                  currentPageId && updatePageCover(currentPageId, url)
+                }
+              />
+            </>
+          )}
+        </div>
       )}
+
       <Toaster />
     </div>
   );

@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Page, BlockType, Block } from "../types/workspace";
 import { Block as BlockComponent } from "./Block";
-import { Plus, MoreHorizontal } from "lucide-react";
+import { Plus, MoreHorizontal, History } from "lucide-react";
 import { motion } from "framer-motion";
-// FIX: Import from the correct location in 'src/pages/'
-import { PageCover } from "../pages/PageCover";
 import { ExportMenu } from "./page/ExportMenu";
+import { VersionHistory } from "./VersionHistory";
 
 interface PageEditorProps {
   page: Page | undefined;
   onAddBlock: (type: BlockType) => void;
   onUpdateBlock: (blockId: string, updates: Partial<Block>) => void;
   onDeleteBlock: (blockId: string) => void;
+  // This prop is passed from Workspace but not used here anymore (handled by PageHeader)
   onUpdatePageTitle: (title: string) => void;
-  onUpdatePageCover: (url: string | null) => void;
+  onUpdatePageCover?: (url: string | null) => void;
 }
 
 export const PageEditor: React.FC<PageEditorProps> = ({
@@ -21,10 +21,10 @@ export const PageEditor: React.FC<PageEditorProps> = ({
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
-  onUpdatePageTitle,
-  onUpdatePageCover,
+  onUpdatePageTitle
 }) => {
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -54,40 +54,52 @@ export const PageEditor: React.FC<PageEditorProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-[#1e1e1e] overflow-hidden">
-      {/* Page Header with Cover */}
-      <PageCover
-        url={page.cover}
-        pageId={page.id}
-        workspaceId={page.workspaceId}
-        onUpdate={onUpdatePageCover}
-      />
 
-      {/* Page Content Container */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-16 pt-8 pb-4">
-          {/* Icon and Title Row */}
-          <div className="flex items-start gap-3 mb-2">
-            <div className="text-5xl mt-1 select-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 transition-colors">
-              {page.icon}
+      <div className="relative">
+        {/* Cover Image Placeholder - Only renders if cover exists */}
+        {page.cover && (
+          <div
+            className="h-48 w-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${page.cover})` }}
+          />
+        )}
+
+        {/* Page Content Container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto px-16 pt-8 pb-4">
+            {/* Icon and Title Row */}
+            <div className="flex items-start gap-3 mb-2">
+              <div className="text-5xl mt-1 select-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1 transition-colors">
+                {page.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={page.title}
+                  onChange={(e) => onUpdatePageTitle(e.target.value)}
+                  onFocus={() => setIsTitleEditing(true)}
+                  onBlur={() => setIsTitleEditing(false)}
+                  className="w-full text-4xl font-bold text-gray-900 dark:text-gray-100 bg-transparent focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                  placeholder="Untitled"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors text-sm text-gray-700 dark:text-gray-300"
+                  title="View version history"
+                >
+                  <History size={18} />
+                  <span className="hidden sm:inline">History</span>
+                </button>
+                <ExportMenu page={page} />
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
+                  <MoreHorizontal size={20} className="text-gray-500" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={page.title}
-                onChange={(e) => onUpdatePageTitle(e.target.value)}
-                onFocus={() => setIsTitleEditing(true)}
-                onBlur={() => setIsTitleEditing(false)}
-                className="w-full text-4xl font-bold text-gray-900 dark:text-gray-100 bg-transparent focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
-                placeholder="Untitled"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <ExportMenu page={page} />
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
-                <MoreHorizontal size={20} className="text-gray-500" />
-              </button>
-            </div>
+
           </div>
 
           {/* Blocks Container */}
@@ -163,6 +175,19 @@ export const PageEditor: React.FC<PageEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Version History Modal */}
+      {showHistory && (
+        <VersionHistory
+          pageId={page.id}
+          currentUserId="local-user"
+          onClose={() => setShowHistory(false)}
+          onRestore={() => {
+            // Refresh page data after restore
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 };

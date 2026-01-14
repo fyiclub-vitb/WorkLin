@@ -6,6 +6,7 @@ import { Workspace } from './pages/Workspace';
 import { SecuritySettings } from './components/security/SecuritySettings';
 import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
+import { PageHeader } from './components/PageHeader'; // Adjust path if needed
 
 function App() {
   return (

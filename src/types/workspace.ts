@@ -14,7 +14,8 @@ export type BlockType =
   | 'image'
   | 'table'
   | 'toggle'
-  | 'callout';
+  | 'callout'
+  | 'ai'; // Added AI block type
 
 export interface Block {
   id: string;

@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WorkLin – Open Source Notion Alternative</title>
+    <script>
+      // Prevent flash of unstyled content (FOUC) for dark mode
+      (function() {
+        const darkMode = localStorage.getItem('darkMode');
+        if (darkMode === 'true' || (darkMode === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
