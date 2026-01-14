@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Settings, X, FileText, Home, Star, Trash2 } from 'lucide-react';
+import { Plus, Search, Settings, Menu, X, FileText, Home, Star, Trash2 } from 'lucide-react';
 import { Page } from '../types/workspace';
 import { motion, AnimatePresence } from 'framer-motion';
 // NEW CODE: Import the picker
