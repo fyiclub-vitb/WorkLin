@@ -6,6 +6,10 @@ import { BlockTypeSelector } from './BlockTypeSelector';
 import { CommentThread } from './comments/CommentThread'; 
 // Import helper to check for comments
 import { getCommentCount } from '../lib/firebase/comments'; 
+import { BlockPermissionSelector } from './BlockPermissionSelector';
+import { useWorkspaceStore } from '../store/workspaceStore';
+import { canEditBlock } from '../lib/firebase/block-permissions';
+import { motion } from 'framer-motion';
 
 interface BlockProps {
   block: BlockType;
@@ -20,6 +24,14 @@ export const Block: React.FC<BlockProps> = ({
   onDelete,
   onAddBlock,
 }) => {
+  const { user } = useWorkspaceStore();
+  // Fallback to 'local-user' for demo if user is null, but ideally we rely on auth.
+  // In this demo app structure, 'local-user' creates blocks.
+  const userId = user?.uid || 'local-user';
+
+  const canEdit = canEditBlock(block, userId);
+  const canChangePermissions = block.createdBy === userId; // Only creator can change permissions for now
+
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -78,6 +90,7 @@ export const Block: React.FC<BlockProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // FIX 2: Prevent Enter from triggering during IME composition (Chinese/Japanese/Mobile)
     if (e.nativeEvent.isComposing) return;
+    if (!canEdit) return; // Prevent key actions if readonly
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -89,6 +102,14 @@ export const Block: React.FC<BlockProps> = ({
       const input = inputRef.current;
       // Use localText here for instant check
       if (localText === '') {
+      const input = inputRef.current instanceof HTMLTextAreaElement
+        ? inputRef.current
+        : (inputRef.current as HTMLInputElement);
+      const value = input.value;
+
+      // Delete block if field is empty (works whether editing or not)
+      // This matches Notion's behavior: empty block + Backspace = delete block
+      if (value === '') {
         e.preventDefault();
         onDelete();
       }
@@ -109,6 +130,11 @@ export const Block: React.FC<BlockProps> = ({
     onUpdate({ 
       text: newValue,
       content: newValue,
+  const updateText = (newText: string) => {
+    // Update both text and content for compatibility
+    onUpdate({
+      text: newText,
+      content: newText, // Simple text for now, can be enhanced with HTML later
     });
   };
 
@@ -128,6 +154,7 @@ export const Block: React.FC<BlockProps> = ({
             onBlur={() => setIsEditing(false)}
             placeholder="Heading 1"
             className={`${commonClasses} text-3xl font-bold mt-1 mb-2`}
+            readOnly={!canEdit}
           />
         );
       case 'heading2':
@@ -142,6 +169,7 @@ export const Block: React.FC<BlockProps> = ({
             onBlur={() => setIsEditing(false)}
             placeholder="Heading 2"
             className={`${commonClasses} text-2xl font-semibold mt-1 mb-2`}
+            readOnly={!canEdit}
           />
         );
       case 'heading3':
@@ -156,6 +184,7 @@ export const Block: React.FC<BlockProps> = ({
             onBlur={() => setIsEditing(false)}
             placeholder="Heading 3"
             className={`${commonClasses} text-xl font-semibold mt-1 mb-2`}
+            readOnly={!canEdit}
           />
         );
       case 'bulleted-list':
@@ -172,6 +201,7 @@ export const Block: React.FC<BlockProps> = ({
               onBlur={() => setIsEditing(false)}
               placeholder="List item"
               className={`${commonClasses} flex-1`}
+              readOnly={!canEdit}
             />
           </div>
         );
@@ -181,8 +211,9 @@ export const Block: React.FC<BlockProps> = ({
             <input
               type="checkbox"
               checked={block.checked || false}
-              onChange={(e) => onUpdate({ checked: e.target.checked })}
+              onChange={(e) => canEdit && onUpdate({ checked: e.target.checked })}
               className="mt-2 cursor-pointer w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              disabled={!canEdit}
             />
             <input
               ref={inputRef as React.Ref<HTMLInputElement>}
@@ -193,9 +224,9 @@ export const Block: React.FC<BlockProps> = ({
               onFocus={() => setIsEditing(true)}
               onBlur={() => setIsEditing(false)}
               placeholder="Todo item"
-              className={`${commonClasses} flex-1 ${
-                block.checked ? 'line-through text-gray-400 dark:text-gray-600' : ''
-              }`}
+              className={`${commonClasses} flex-1 ${block.checked ? 'line-through text-gray-400 dark:text-gray-600' : ''
+                }`}
+              readOnly={!canEdit}
             />
           </div>
         );
@@ -212,6 +243,12 @@ export const Block: React.FC<BlockProps> = ({
             rows={1}
             className={`${commonClasses} text-base leading-relaxed min-h-[1.5rem]`}
             style={{ overflow: 'hidden', resize: 'none' }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = target.scrollHeight + 'px';
+            }}
+            readOnly={!canEdit}
           />
         );
     }
@@ -256,6 +293,37 @@ export const Block: React.FC<BlockProps> = ({
         <div className="flex-1 min-w-0" onClick={() => !isEditing && setIsEditing(true)}>
           {renderContent()}
         </div>
+    <div
+      className="group/block relative flex items-start gap-2 py-1 px-1 -mx-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Drag Handle & Controls */}
+      <div className={`flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-opacity ${isHovered ? 'opacity-100' : ''}`}>
+        <button className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400">
+          <GripVertical size={14} />
+        </button>
+        <BlockTypeSelector
+          currentType={block.type}
+          onChange={(type) => canEdit && onUpdate({ type })}
+        />
+        <BlockPermissionSelector
+          currentType={block.permissions?.type}
+          onChange={(type) => onUpdate({ permissions: { ...block.permissions, type } })}
+          readOnly={!canChangePermissions}
+        />
+        <button
+          onClick={onDelete}
+          className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+          aria-label="Delete block"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0" onClick={() => !isEditing && canEdit && setIsEditing(true)}>
+        {renderContent()}
       </div>
 
       {/* Comment Thread Popup */}
