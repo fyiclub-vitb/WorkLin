@@ -8,6 +8,7 @@ import { Toaster } from '../components/ui/toaster';
 
 export const Workspace: React.FC = () => {
   const navigate = useNavigate();
+  // We extract the updatePageIcon function from your hook here
   const {
     workspace,
     currentPage,
@@ -16,6 +17,7 @@ export const Workspace: React.FC = () => {
     addPage,
     deletePage,
     updatePageTitle,
+    updatePageIcon, // <--- NEW: Grab this function
     addBlock,
     updateBlock,
     deleteBlock,
@@ -78,6 +80,8 @@ export const Workspace: React.FC = () => {
             deletePage(pageId);
           }
         }}
+        // NEW: Connect the sidebar's update request to your logic
+        onUpdatePage={(pageId, icon) => updatePageIcon(pageId, icon)}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
