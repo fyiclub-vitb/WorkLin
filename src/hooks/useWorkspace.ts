@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
+import { createVersion } from '../lib/firebase/history';
 
 const STORAGE_KEY = 'worklin-workspace';
 
@@ -123,13 +124,22 @@ export const useWorkspace = () => {
   };
 
   const updatePageTitle = (pageId: string, title: string) => {
+    const oldPage = workspace.pages.find(p => p.id === pageId);
+    if (!oldPage) return;
+
     setWorkspace((prev) => ({
-      ...prev, // Spread prev
+      ...prev,
       pages: prev.pages.map((p) =>
         p.id === pageId ? { ...p, title, updatedAt: new Date() } : p
       ),
       updatedAt: new Date()
     }));
+
+    // Create version history entry
+    const newPage = { ...oldPage, title, updatedAt: new Date() };
+    createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
+      console.error('Failed to create version:', err);
+    });
   };
 
   const updatePageIcon = (pageId: string, icon: string) => {
@@ -143,13 +153,22 @@ export const useWorkspace = () => {
   };
 
   const updatePageCover = (pageId: string, cover: string | null) => {
+    const oldPage = workspace.pages.find(p => p.id === pageId);
+    if (!oldPage) return;
+
     setWorkspace((prev) => ({
-      ...prev, // Spread prev
+      ...prev,
       pages: prev.pages.map((p) =>
         p.id === pageId ? { ...p, cover: cover || undefined, updatedAt: new Date() } : p
       ),
       updatedAt: new Date()
     }));
+
+    // Create version history entry
+    const newPage = { ...oldPage, cover: cover || undefined, updatedAt: new Date() };
+    createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
+      console.error('Failed to create version:', err);
+    });
   };
 
   const addBlock = (pageId: string, type: BlockType = 'paragraph') => {
