@@ -3,6 +3,8 @@ import { Page, BlockType, Block } from '../types/workspace';
 import { Block as BlockComponent } from './Block';
 import { Plus, MoreHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
+// 1. Import the hook
+import { useToast } from '../hooks/use-toast'; 
 
 interface PageEditorProps {
   page: Page | undefined;
@@ -21,6 +23,9 @@ export const PageEditor: React.FC<PageEditorProps> = ({
 }) => {
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  
+  // 2. Initialize the toast
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isTitleEditing && titleInputRef.current) {
@@ -29,11 +34,46 @@ export const PageEditor: React.FC<PageEditorProps> = ({
     }
   }, [isTitleEditing]);
 
+  // --- Wrapper Functions for Toasts ---
+
+  const handleAddBlock = (type: BlockType) => {
+    onAddBlock(type);
+    toast({
+      title: "Block created",
+      description: "A new block has been added to the page.",
+      duration: 3000,
+    });
+  };
+
+  const handleDeleteBlock = (blockId: string) => {
+    onDeleteBlock(blockId);
+    toast({
+      title: "Block deleted",
+      description: "The block has been removed.",
+      duration: 3000,
+      // You can add variant: "destructive" here if you want it red, 
+      // but usually 'success' (default) implies the *action* succeeded.
+    });
+  };
+
+  const handleUpdateBlock = (blockId: string, updates: Partial<Block>) => {
+    onUpdateBlock(blockId, updates);
+    // Note: If onUpdateBlock fires on every keystroke, this will spam toasts.
+    // Ideally, ensure onUpdateBlock is debounced or only fires on blur.
+    toast({
+      title: "Block updated",
+      description: "Your changes have been saved.",
+      duration: 3000,
+    });
+  };
+
+  // ------------------------------------
+
   if (!page) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white dark:bg-[#1e1e1e]">
         <div className="text-center max-w-md px-6">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-50 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
             W
           </div>
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -105,7 +145,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                   Type <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> to insert blocks
                 </p>
                 <button
-                  onClick={() => onAddBlock('paragraph')}
+                  onClick={() => handleAddBlock('paragraph')}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm font-medium"
                 >
                   <Plus size={16} />
@@ -124,9 +164,9 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                 >
                   <BlockComponent
                     block={block}
-                    onUpdate={(updates) => onUpdateBlock(block.id, updates)}
-                    onDelete={() => onDeleteBlock(block.id)}
-                    onAddBlock={() => onAddBlock('paragraph')}
+                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onDelete={() => handleDeleteBlock(block.id)}
+                    onAddBlock={() => handleAddBlock('paragraph')}
                   />
                 </motion.div>
               ))}
@@ -136,7 +176,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
           {/* Add Block Button - Always visible at bottom */}
           <div className="mt-8 mb-12">
             <button
-              onClick={() => onAddBlock('paragraph')}
+              onClick={() => handleAddBlock('paragraph')}
               className="group flex items-center gap-2 px-3 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors w-full"
             >
               <Plus size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
