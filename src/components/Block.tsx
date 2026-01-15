@@ -11,6 +11,9 @@ import { useWorkspaceStore } from '../store/workspaceStore';
 import { canEditBlock } from '../lib/firebase/block-permissions';
 import { motion } from 'framer-motion';
 import { AIBlock } from './editor/AIBlock';
+import { EquationBlock } from './blocks/EquationBlock';
+import { EmbedBlock } from './blocks/EmbedBlock';
+import { CodeBlock } from './blocks/CodeBlock';
 
 interface BlockProps {
   block: BlockType;
@@ -129,6 +132,15 @@ export const Block: React.FC<BlockProps> = ({
 
   const renderContent = () => {
     switch (block.type) {
+      case 'equation':
+        return <EquationBlock block={block} onUpdate={onUpdate} />;
+
+      case 'embed':
+        return <EmbedBlock block={block} onUpdate={onUpdate} />;
+
+      case 'code-enhanced':
+        return <CodeBlock block={block} onUpdate={onUpdate} />;
+
       case 'ai':
         return (
           <AIBlock
