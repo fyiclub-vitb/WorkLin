@@ -3,7 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Workspace } from './pages/Workspace';
+import { SecuritySettings } from './components/security/SecuritySettings';
+import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
+import { PageHeader } from './components/PageHeader'; // Adjust path if needed
 
 function App() {
   return (
@@ -12,6 +15,8 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/app" element={<Workspace />} />
+        <Route path="/security" element={<SecuritySettings />} />
+        <Route path="/audit-log" element={<AuditLog />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BlockType } from '../types/workspace';
-import { Type, Heading1, Heading2, Heading3, List, CheckSquare } from 'lucide-react';
+import { Type, Heading1, Heading2, Heading3, List, CheckSquare, Sparkles } from 'lucide-react'; // Added Sparkles
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ const blockTypes: { type: BlockType; label: string; icon: React.ReactNode }[] = 
   { type: 'heading3', label: 'Heading 3', icon: <Heading3 size={16} /> },
   { type: 'bulleted-list', label: 'Bulleted List', icon: <List size={16} /> },
   { type: 'checkbox', label: 'To-do', icon: <CheckSquare size={16} /> },
+  { type: 'ai', label: 'AI Assistant', icon: <Sparkles size={16} className="text-purple-500" /> }, // Added AI
 ];
 
 export const BlockTypeSelector: React.FC<BlockTypeSelectorProps> = ({
