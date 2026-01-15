@@ -58,7 +58,9 @@
     "tailwind-merge": "^2.5.5",
     "y-websocket": "^2.0.4",
     "yjs": "^13.6.22",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.2",
+    "katex": "^0.16.9",
+    "prismjs": "^1.29.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
@@ -76,6 +78,8 @@
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
-    "vitest": "^2.1.5"
+    "vitest": "^2.1.5",
+    "@types/katex": "^0.16.7",
+    "@types/prismjs": "^1.26.3"
   }
 }
