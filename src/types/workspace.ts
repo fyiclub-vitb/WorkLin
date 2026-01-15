@@ -15,7 +15,10 @@ export type BlockType =
   | 'table'
   | 'toggle'
   | 'callout'
-  | 'ai'; // Added AI block type
+  | 'ai'
+  | 'equation'      // NEW: LaTeX equation block
+  | 'embed'         // NEW: Embedded content block
+  | 'code-enhanced'; // NEW: Enhanced code block with syntax highlighting
 
 export interface Block {
   id: string;
@@ -23,7 +26,7 @@ export interface Block {
   content?: string; // Rich text content (HTML/JSON)
   text?: string; // Plain text fallback
   checked?: boolean;
-  properties?: Record<string, any>; // Additional properties (e.g., image URL, table data)
+  properties?: Record<string, any>; // Additional properties (e.g., image URL, table data, embed URL, language)
   order?: number; // Block order in page
   parentId?: string; // For nested blocks (toggle lists)
   createdAt?: Date;
