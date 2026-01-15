@@ -19,7 +19,7 @@ import { DatabaseProperty, RelationProperty as RelationType, RollupProperty as R
 
 interface PageEditorProps {
   page: Page | undefined;
-  workspace: any; // Accept workspace object
+  allPages: Page[]; // FIX: Change workspace to allPages array
   onAddBlock: (type: BlockType) => void;
   onUpdateBlock: (blockId: string, updates: Partial<Block>) => void;
   onDeleteBlock: (blockId: string) => void;
@@ -30,7 +30,7 @@ interface PageEditorProps {
 
 export const PageEditor: React.FC<PageEditorProps> = ({
   page,
-  allPages = [],
+  allPages, // FIX: Use allPages instead of workspace
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
@@ -144,19 +144,17 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                 <ExportMenu page={page} />
               </div>
             </div>
-            {/* Database Properties Section */}
-            {workspace.pages.length > 1 && (
+
+            {/* Database Properties Section - FIX: Use allPages instead of workspace.pages */}
+            {allPages.length > 1 && (
               <div className="mt-8">
                 <PageProperties
                   page={page}
-                  allPages={workspace.pages}
+                  allPages={allPages}
                   onUpdatePage={(pageId, updates) => {
-                    setWorkspace(prev => ({
-                      ...prev,
-                      pages: prev.pages.map(p => 
-                        p.id === pageId ? { ...p, ...updates } : p
-                      )
-                    }));
+                    if (onUpdatePage) {
+                      onUpdatePage(pageId, updates);
+                    }
                   }}
                 />
               </div>
@@ -175,7 +173,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                           property={property as RelationType}
                           propertyName={name}
                           allPages={allPages}
-                          onUpdate={(updatedPage) => onUpdatePage && onUpdatePage(updatedPage)}
+                          onUpdate={(updatedPage) => onUpdatePage && onUpdatePage(page.id, updatedPage)}
                         />
                       );
                     }
