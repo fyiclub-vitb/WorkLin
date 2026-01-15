@@ -4,8 +4,12 @@ import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Workspace } from './pages/Workspace';
 import { Toaster } from './components/ui/toaster';
+import { ShortcutsModal } from './components/ShortcutsModal';
+import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
 
 function App() {
+  const { isOpen, setIsOpen } = useKeyboardShortcuts();
+
   return (
     <BrowserRouter>
       <Routes>
@@ -15,6 +19,9 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
+      
+      {/* 3. Render the Modal globally */}
+      <ShortcutsModal open={isOpen} onOpenChange={setIsOpen} />
     </BrowserRouter>
   );
 }
