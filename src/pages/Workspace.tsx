@@ -27,7 +27,7 @@ export const Workspace: React.FC = () => {
     addBlock,
     updateBlock,
     deleteBlock,
-    setWorkspace,
+    updatePageProperties,
   } = useWorkspace();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -83,7 +83,6 @@ export const Workspace: React.FC = () => {
             deletePage(pageId);
           }
         }}
-        // Connect the sidebar's update request to your logic
         onUpdatePage={(pageId, icon) => updatePageIcon(pageId, icon)}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -107,7 +106,7 @@ export const Workspace: React.FC = () => {
 
               <PageEditor
                 page={currentPage}
-                workspace={workspace}
+                allPages={workspace.pages} // FIX: Pass workspace.pages as allPages
                 onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
                 onUpdateBlock={(blockId, updates) =>
                   currentPageId && updateBlock(currentPageId, blockId, updates)
@@ -122,12 +121,7 @@ export const Workspace: React.FC = () => {
                   currentPageId && updatePageCover(currentPageId, url)
                 }
                 onUpdatePage={(pageId, updates) => {
-                  setWorkspace(prev => ({
-                    ...prev,
-                    pages: prev.pages.map(p =>
-                      p.id === pageId ? { ...p, ...updates, updatedAt: new Date() } : p
-                    )
-                  }));
+                  updatePageProperties(pageId, updates.properties);
                 }}
               />
             </>
