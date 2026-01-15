@@ -1,3 +1,4 @@
+// src/pages/Workspace.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -26,6 +27,7 @@ export const Workspace: React.FC = () => {
     addBlock,
     updateBlock,
     deleteBlock,
+    setWorkspace,
   } = useWorkspace();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -81,7 +83,7 @@ export const Workspace: React.FC = () => {
             deletePage(pageId);
           }
         }}
-        // NEW: Connect the sidebar's update request to your logic
+        // Connect the sidebar's update request to your logic
         onUpdatePage={(pageId, icon) => updatePageIcon(pageId, icon)}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -105,6 +107,7 @@ export const Workspace: React.FC = () => {
 
               <PageEditor
                 page={currentPage}
+                workspace={workspace}
                 onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
                 onUpdateBlock={(blockId, updates) =>
                   currentPageId && updateBlock(currentPageId, blockId, updates)
@@ -118,6 +121,14 @@ export const Workspace: React.FC = () => {
                 onUpdatePageCover={(url) =>
                   currentPageId && updatePageCover(currentPageId, url)
                 }
+                onUpdatePage={(pageId, updates) => {
+                  setWorkspace(prev => ({
+                    ...prev,
+                    pages: prev.pages.map(p =>
+                      p.id === pageId ? { ...p, ...updates, updatedAt: new Date() } : p
+                    )
+                  }));
+                }}
               />
             </>
           )}

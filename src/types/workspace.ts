@@ -1,3 +1,4 @@
+// src/types/workspace.ts
 import { BlockPermission } from './permission';
 
 export type BlockType =
@@ -42,6 +43,11 @@ export interface Page {
   icon: string;
   cover?: string; // Cover image URL
   blocks: Block[];
+  
+  // Database Properties
+  properties?: Record<string, any>; // Typed as any to avoid circular dependency with DatabaseProperty
+  propertyValues?: Record<string, any>;
+
   workspaceId?: string; // Optional for backward compatibility
   parentId?: string; // For nested pages
   isArchived?: boolean;
