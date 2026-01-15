@@ -1,8 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-// ADD THIS IMPORT
-import { getFirestore } from "firebase/firestore";
 
+// This tells the app to look at your .env file for the keys
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -16,8 +15,5 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-
-// ADD THIS EXPORT
-export const db = getFirestore(app);
 
 export default app;
