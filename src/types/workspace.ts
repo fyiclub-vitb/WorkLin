@@ -1,5 +1,6 @@
 // src/types/workspace.ts
 import { BlockPermission } from './permission';
+import { ViewDefinition } from './view';
 
 export type BlockType =
   | 'paragraph'
@@ -54,6 +55,9 @@ export interface Page {
   isPublic?: boolean;
   tags?: string[];
   type?: 'document' | 'canvas' | 'kanban' | string;
+  properties?: Record<string, any>; // Custom properties for database items
+  views?: ViewDefinition[]; // Saved views configuration
+  lastActiveViewId?: string; // Last selected view ID
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;

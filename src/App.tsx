@@ -10,6 +10,7 @@ import { ShortcutsModal } from './components/ShortcutsModal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
 
 import { PageHeader } from './components/PageHeader'; // Adjust path if needed
+import { OfflineIndicator } from './components/ui/offline-indicator';
 
 
 function App() {
@@ -27,9 +28,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
-      
-      {/* 3. Render the Modal globally */}
-      <ShortcutsModal open={isOpen} onOpenChange={setIsOpen} />
+      <OfflineIndicator />
     </BrowserRouter>
   );
 }
