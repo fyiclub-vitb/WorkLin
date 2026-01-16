@@ -9,6 +9,10 @@ import { Toaster } from './components/ui/toaster';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
 
+import { PageHeader } from './components/PageHeader'; // Adjust path if needed
+import { OfflineIndicator } from './components/ui/offline-indicator';
+
+
 function App() {
   const { isOpen, setIsOpen } = useKeyboardShortcuts();
 
@@ -29,6 +33,7 @@ function App() {
       <Toaster />
       
       <ShortcutsModal open={isOpen} onOpenChange={setIsOpen} />
+      <OfflineIndicator />
     </BrowserRouter>
   );
 }

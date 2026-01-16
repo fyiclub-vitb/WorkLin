@@ -239,12 +239,25 @@ export const useWorkspace = () => {
   };
 
   const currentPage = workspace.pages.find((p) => p.id === currentPageId);
+  const updatePageProperties = (pageId: string, properties: any) => {
+  setWorkspace((prev) => ({
+    ...prev,
+    pages: prev.pages.map((p) =>
+      p.id === pageId 
+        ? { ...p, properties, updatedAt: new Date() } 
+        : p
+    ),
+    updatedAt: new Date()
+  }));
+};
+
 
   return {
     workspace,
     currentPage,
     currentPageId,
     setCurrentPageId,
+    updatePageProperties,
     addPage,
     deletePage,
     updatePageTitle,

@@ -1,34 +1,118 @@
+// src/components/PageEditor.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Page, BlockType, Block } from '../types/workspace';
 import { Block as BlockComponent } from './Block';
-import { Plus, History } from 'lucide-react';
+import { Plus, History, LayoutGrid, Table as TableIcon, Calendar as CalendarIcon, List } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PageProperties } from './PageProperties';
 
 import { CollaborationProvider } from './collaboration/CollaborationProvider';
 import { useToast } from '../hooks/use-toast';
 import { ExportMenu } from "./page/ExportMenu";
 import { VersionHistory } from "./VersionHistory";
+import { TableView } from './views/TableView';
+import { BoardView } from './views/BoardView';
+import { CalendarView } from './views/CalendarView';
+
+import { ViewType, ViewDefinition } from '../types/view';
+import { getPagesByParent, updatePage, createPage } from '../lib/firebase/database';
+
+// Database Property Imports
+import { RelationProperty } from './database/RelationProperty';
+import { RollupProperty } from './database/RollupProperty';
+import { FormulaProperty } from './database/FormulaProperty';
+import { DatabaseProperty, RelationProperty as RelationType, RollupProperty as RollupType, FormulaProperty as FormulaType } from '../types/database';
 
 interface PageEditorProps {
   page: Page | undefined;
+  allPages: Page[]; // FIX: Change workspace to allPages array
   onAddBlock: (type: BlockType) => void;
   onUpdateBlock: (blockId: string, updates: Partial<Block>) => void;
   onDeleteBlock: (blockId: string) => void;
   onUpdatePageTitle: (title: string) => void;
   onUpdatePageCover: (url: string) => void;
+  onUpdatePage?: (pageId: string, updates: Partial<Page>) => void;
 }
 
 export const PageEditor: React.FC<PageEditorProps> = ({
   page,
+  allPages, // FIX: Use allPages instead of workspace
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
   onUpdatePageTitle,
   onUpdatePageCover,
+  onUpdatePage,
 }) => {
   const [showHistory, setShowHistory] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [currentView, setCurrentView] = useState<ViewDefinition | null>(null);
+  const [databasePages, setDatabasePages] = useState<Page[]>([]);
+  const [isLoadingViews, setIsLoadingViews] = useState(false);
+
+  // Initialize view from page settings
+  useEffect(() => {
+    if (page?.lastActiveViewId && page.views) {
+      const savedView = page.views.find(v => v.id === page.lastActiveViewId);
+      if (savedView) setCurrentView(savedView);
+    }
+  }, [page?.id]); // Only reset on page change, avoid loop
+
+  // Fetch child pages when in a database view
+  useEffect(() => {
+    if (currentView && page) {
+      setIsLoadingViews(true);
+      getPagesByParent(page.id).then(({ pages }) => {
+        setDatabasePages(pages);
+        setIsLoadingViews(false);
+      });
+    }
+  }, [currentView, page?.id]);
+
+  const handleSwitchView = async (type: ViewType) => {
+    if (!page) return;
+
+    // Check if view already exists
+    let newView = page.views?.find(v => v.type === type);
+    let updatedViews = page.views || [];
+
+    if (!newView) {
+      newView = {
+        id: crypto.randomUUID(),
+        name: type.charAt(0).toUpperCase() + type.slice(1),
+        type: type
+      };
+      updatedViews = [...updatedViews, newView];
+    }
+
+    // Optimistic update
+    setCurrentView(newView);
+
+    // Persist
+    try {
+      const result = await updatePage(page.id, {
+        views: updatedViews,
+        lastActiveViewId: newView.id
+      });
+      if (result.error) {
+        console.error('Failed to persist view:', result.error);
+        toast({
+          title: "Error saving view",
+          description: "Your view preference couldn't be saved.",
+          variant: "destructive"
+        });
+      }
+    } catch (e) {
+      console.error('Exception persisting view:', e);
+    }
+  };
+
+  const handleClearView = async () => {
+    if (!page) return;
+    setCurrentView(null);
+    await updatePage(page.id, { lastActiveViewId: undefined });
+  }
 
   const { toast } = useToast();
 
@@ -84,6 +168,9 @@ export const PageEditor: React.FC<PageEditorProps> = ({
     );
   }
 
+  // Cast properties to strongly typed DatabaseProperty record
+  const properties = page.properties as Record<string, DatabaseProperty> | undefined;
+
   return (
     <CollaborationProvider pageId={page.id}>
       <div className="flex-1 flex flex-col bg-white dark:bg-[#1e1e1e] overflow-hidden">
@@ -116,6 +203,33 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                   className="w-full text-4xl font-bold text-gray-900 dark:text-gray-100 bg-transparent focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600"
                   placeholder="Untitled"
                 />
+                {/* View Switcher */}
+                <div className="flex items-center gap-1 mt-4 border-b border-gray-200 dark:border-gray-800">
+                  <button
+                    onClick={handleClearView}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-2 ${!currentView ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                  >
+                    <List size={14} /> Document
+                  </button>
+                  <button
+                    onClick={() => handleSwitchView('table')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-2 ${currentView?.type === 'table' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                  >
+                    <TableIcon size={14} /> Table
+                  </button>
+                  <button
+                    onClick={() => handleSwitchView('board')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-2 ${currentView?.type === 'board' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                  >
+                    <LayoutGrid size={14} /> Board
+                  </button>
+                  <button
+                    onClick={() => handleSwitchView('calendar')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-2 ${currentView?.type === 'calendar' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                  >
+                    <CalendarIcon size={14} /> Calendar
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -130,65 +244,139 @@ export const PageEditor: React.FC<PageEditorProps> = ({
               </div>
             </div>
 
+            {/* Database Properties Section - FIX: Use allPages instead of workspace.pages */}
+            {allPages.length > 1 && (
+              <div className="mt-8">
+                <PageProperties
+                  page={page}
+                  allPages={allPages}
+                  onUpdatePage={(pageId, updates) => {
+                    if (onUpdatePage) {
+                      onUpdatePage(pageId, updates);
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Database Properties Section */}
+            {properties && Object.keys(properties).length > 0 && (
+              <div className="mt-6 mb-8 p-4 border rounded-lg border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/20">
+                <div className="space-y-4">
+                  {Object.entries(properties).map(([name, property]) => {
+                    if (property.type === 'relation') {
+                      return (
+                        <RelationProperty
+                          key={name}
+                          page={page}
+                          property={property as RelationType}
+                          propertyName={name}
+                          allPages={allPages}
+                          onUpdate={(updatedPage) => onUpdatePage && onUpdatePage(page.id, updatedPage)}
+                        />
+                      );
+                    }
+                    if (property.type === 'rollup') {
+                      return (
+                        <RollupProperty
+                          key={name}
+                          page={page}
+                          property={property as RollupType}
+                          allPages={allPages}
+                        />
+                      );
+                    }
+                    if (property.type === 'formula') {
+                      return (
+                        <FormulaProperty
+                          key={name}
+                          page={page}
+                          property={property as FormulaType}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Blocks Container */}
             <div className="mt-8">
-              {page.blocks.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="py-12"
-                >
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                      <Plus size={24} className="text-gray-400" />
+              {currentView ? (
+                <div className="min-h-[500px]">
+                  {isLoadingViews ? (
+                    <div className="text-center py-10 text-gray-500">Loading views...</div>
+                  ) : (
+                    <>
+                      {currentView.type === 'table' && <TableView pages={databasePages} view={currentView} onOpenPage={(id) => window.location.href = `/page/${id}`} />}
+                      {currentView.type === 'board' && <BoardView pages={databasePages} view={currentView} onOpenPage={(id) => window.location.href = `/page/${id}`} />}
+                      {currentView.type === 'calendar' && <CalendarView pages={databasePages} view={currentView} onOpenPage={(id) => window.location.href = `/page/${id}`} />}
+                    </>
+                  )}
+                </div>
+              ) : (
+                // Default Block Editor
+                <>
+                  {page.blocks.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="py-12"
+                    >
+                      <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                          <Plus size={24} className="text-gray-400" />
+                        </div>
+                        <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">
+                          This page is empty
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+                          Type <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> to insert blocks
+                        </p>
+                        <button
+                          onClick={() => handleAddBlock('paragraph')}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm font-medium"
+                        >
+                          <Plus size={16} />
+                          Add your first block
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div className="space-y-1">
+                      {page.blocks.map((block, index) => (
+                        <motion.div
+                          key={block.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.02 }}
+                        >
+                          <BlockComponent
+                            block={block}
+                            onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                            onDelete={() => handleDeleteBlock(block.id)}
+                            onAddBlock={() => handleAddBlock('paragraph')}
+                          />
+                        </motion.div>
+                      ))}
                     </div>
-                    <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">
-                      This page is empty
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                      Type <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> to insert blocks
-                    </p>
+                  )}
+
+                  {/* Add Block Button - Always visible at bottom */}
+                  <div className="mt-8 mb-12">
                     <button
                       onClick={() => handleAddBlock('paragraph')}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm font-medium"
+                      className="group flex items-center gap-2 px-3 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors w-full"
                     >
-                      <Plus size={16} />
-                      Add your first block
+                      <Plus size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="text-sm">
+                        Type <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> for commands
+                      </span>
                     </button>
                   </div>
-                </motion.div>
-              ) : (
-                <div className="space-y-1">
-                  {page.blocks.map((block, index) => (
-                    <motion.div
-                      key={block.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.02 }}
-                    >
-                      <BlockComponent
-                        block={block}
-                        onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
-                        onDelete={() => handleDeleteBlock(block.id)}
-                        onAddBlock={() => handleAddBlock('paragraph')}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
+                </>
               )}
-
-              {/* Add Block Button - Always visible at bottom */}
-              <div className="mt-8 mb-12">
-                <button
-                  onClick={() => handleAddBlock('paragraph')}
-                  className="group flex items-center gap-2 px-3 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors w-full"
-                >
-                  <Plus size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-sm">
-                    Type <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">/</kbd> for commands
-                  </span>
-                </button>
-              </div>
             </div>
           </div>
         </div>

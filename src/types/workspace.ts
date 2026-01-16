@@ -1,4 +1,6 @@
+// src/types/workspace.ts
 import { BlockPermission } from './permission';
+import { ViewDefinition } from './view';
 
 export type BlockType =
   | 'paragraph'
@@ -42,12 +44,20 @@ export interface Page {
   icon: string;
   cover?: string; // Cover image URL
   blocks: Block[];
+  
+  // Database Properties
+  properties?: Record<string, any>; // Typed as any to avoid circular dependency with DatabaseProperty
+  propertyValues?: Record<string, any>;
+
   workspaceId?: string; // Optional for backward compatibility
   parentId?: string; // For nested pages
   isArchived?: boolean;
   isPublic?: boolean;
   tags?: string[];
   type?: 'document' | 'canvas' | 'kanban' | string;
+  properties?: Record<string, any>; // Custom properties for database items
+  views?: ViewDefinition[]; // Saved views configuration
+  lastActiveViewId?: string; // Last selected view ID
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;

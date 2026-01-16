@@ -1,17 +1,22 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  serverTimestamp, 
-  getDoc 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  getDoc
 } from 'firebase/firestore';
 import { db } from './config';
+import { addToQueue } from '../offline/queue';
 
 const PAGES_COLLECTION = 'pages';
 
 export const createPage = async (userId: string) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'createPage', payload: { userId } });
+    return { id: 'temp-' + Date.now(), error: null, offline: true };
+  }
   try {
     const docRef = await addDoc(collection(db, PAGES_COLLECTION), {
       userId,
@@ -29,6 +34,10 @@ export const createPage = async (userId: string) => {
 };
 
 export const updatePage = async (pageId: string, data: any) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'updatePage', payload: { pageId, data } });
+    return { error: null, offline: true };
+  }
   try {
     const pageRef = doc(db, PAGES_COLLECTION, pageId);
     await updateDoc(pageRef, {
@@ -43,6 +52,10 @@ export const updatePage = async (pageId: string, data: any) => {
 };
 
 export const deletePage = async (pageId: string) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'deletePage', payload: { pageId } });
+    return { error: null, offline: true };
+  }
   try {
     // Ideally, you should also delete all blocks associated with this page here
     await deleteDoc(doc(db, PAGES_COLLECTION, pageId));
