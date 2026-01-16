@@ -81,17 +81,90 @@ Password: demo123
 4. Or manually enter: `demo@worklin.com` / `demo123`
 5. Start using WorkLin! 🚀
 
-### Firebase Setup (Optional - For Future Features)
+### Environment Setup
 
-> **Note:** WorkLin works perfectly with demo mode! Firebase setup is only needed for future features like real-time collaboration and cloud sync. See `GITHUB_ISSUES.md` for contribution opportunities.
+#### 1. Firebase Setup (Required for Cloud Features)
 
 1. Create a Firebase project at [https://console.firebase.google.com](https://console.firebase.google.com)
 2. Enable Authentication (Email/Password and Google)
 3. Create a Firestore database
-4. Enable Storage
-5. Copy your Firebase config to `.env` file
-6. Set up Firestore security rules (see `firestore.rules` - to be added)
-7. Set up Storage security rules (see `storage.rules` - to be added)
+4. Copy your Firebase config to `.env` file:
+   ```env
+   VITE_FIREBASE_API_KEY=your-api-key
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+   VITE_FIREBASE_APP_ID=your-app-id
+   ```
+5. Set up Firestore security rules (see `firestore.rules`)
+6. Set up Storage security rules (see `storage.rules`)
+
+#### 2. Cloudinary Setup (Free - 25GB Storage)
+
+WorkLin uses Cloudinary for image storage (free tier with 25GB).
+
+1. Sign up at [https://cloudinary.com/users/register/free](https://cloudinary.com/users/register/free) (no credit card needed)
+2. Get your credentials from Dashboard:
+   - Cloud Name
+   - API Key
+   - API Secret
+3. Create an Upload Preset:
+   - Go to Settings > Upload > Upload presets
+   - Add new preset: `worklin_upload`
+   - Set Signing mode: `Unsigned`
+4. Add to `.env` file:
+   ```env
+   VITE_CLOUDINARY_CLOUD_NAME=your-cloud-name
+   VITE_CLOUDINARY_API_KEY=your-api-key
+   VITE_CLOUDINARY_UPLOAD_PRESET=worklin_upload
+   ```
+
+See [MIGRATE_TO_CLOUDINARY.md](MIGRATE_TO_CLOUDINARY.md) for detailed setup instructions.
+
+#### 3. Render Setup (Optional - For Real-time Collaboration)
+
+For real-time collaboration features, deploy the Yjs server on Render (free tier):
+
+1. Sign up at [https://render.com](https://render.com) (use GitHub to sign in)
+2. Create a new Web Service
+3. Connect your GitHub repository
+4. Configure:
+   - **Root Directory**: `yjs-server`
+   - **Build Command**: `npm install`
+   - **Start Command**: `node server.js`
+   - **Plan**: Free
+5. Get your WebSocket URL (e.g., `wss://your-app.onrender.com`)
+6. Add to `.env`:
+   ```env
+   VITE_YJS_WEBSOCKET_URL=wss://your-app.onrender.com
+   ```
+
+**Note**: Collaboration is optional. The app works perfectly without it!
+
+See [YJS_SERVER_SETUP.md](YJS_SERVER_SETUP.md) for detailed setup instructions.
+
+#### 4. Google Gemini API Setup (Optional - For AI Features)
+
+WorkLin includes AI writing assistance powered by Google Gemini.
+
+1. Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Add to your root `.env` file:
+   ```env
+   VITE_GEMINI_API_KEY=your-gemini-api-key
+   ```
+3. Restart your dev server if running:
+   ```bash
+   npm run dev
+   ```
+
+**Rate Limits**: 15 requests per minute per user (client-side rate limiting)
+
+**Free Tier**: 60 RPM, 1,500 requests/day - No credit card required!
+
+**Note**: The API key is used directly in the frontend. For production, set `VITE_GEMINI_API_KEY` in your hosting platform's environment variables (Vercel, Netlify, etc.).
+
+See [GEMINI_API_SETUP.md](GEMINI_API_SETUP.md) for detailed setup instructions.
 
 ## 📦 Available Scripts
 
@@ -124,9 +197,10 @@ npm run lint
 ### Backend & Database
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth
-- **Storage**: Firebase Storage
+- **Storage**: Cloudinary (25GB free tier) - Image and file storage
 - **Functions**: Firebase Cloud Functions
-- **Hosting**: Firebase Hosting (or Vercel)
+- **Hosting**: Firebase Hosting, Vercel, or Render
+- **Collaboration Server**: Render (free tier) - Yjs WebSocket server
 
 ### Collaboration
 - **Real-time Sync**: Yjs + WebRTC (or Firebase)
@@ -177,6 +251,14 @@ worklin/
 2. The new page will appear in the sidebar
 3. Click on it to start editing
 
+### Managing Pages
+
+- **Delete Page**: Click the trash icon next to a page to move it to trash
+- **Trash View**: Click "Trash" in the sidebar to view deleted pages
+- **Restore Page**: In trash view, click the restore icon to restore a page
+- **Permanent Delete**: In trash view, click the permanent delete icon to permanently remove a page
+- **Home**: Click "Home" in the sidebar to clear page selection and return to home view
+
 ### Adding Blocks
 
 1. Click "Add Block" at the bottom of the editor
@@ -226,12 +308,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🎯 Roadmap
 
 - [x] Basic block-based editor
-- [x] Firebase integration (setup ready)
+- [x] Firebase integration
+- [x] Cloudinary image storage (25GB free)
 - [x] Authentication (demo mode)
 - [x] Workspace management
+- [x] Trash system with restore functionality
+- [x] Settings page
 - [x] Landing page
 - [x] Login page with demo credentials
-- [ ] Real-time collaboration (Yjs) - See Issue #21
+- [x] Responsive design (mobile-friendly)
+- [x] Dark mode support
+- [ ] Real-time collaboration (Yjs + Render) - See Issue #21
 - [ ] AI writing assistant - See Issue #23
 - [ ] Database views - See Issue #14
 - [ ] Comments system - See Issue #12

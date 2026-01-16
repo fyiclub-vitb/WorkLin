@@ -58,11 +58,21 @@ export const logAction = async (options: AuditLogOptions): Promise<void> => {
       return;
     }
 
-    await logAuditEventCallable({
-      ...options,
-      status: options.status || 'SUCCESS',
-      actorRole: options.actorRole || 'user',
-    });
+    // Check if functions are available (optional feature)
+    try {
+      await logAuditEventCallable({
+        ...options,
+        status: options.status || 'SUCCESS',
+        actorRole: options.actorRole || 'user',
+      });
+    } catch (funcError: any) {
+      // Functions not deployed or unavailable - silently fail (optional feature)
+      if (funcError.code === 'functions/not-found' || funcError.message?.includes('not found')) {
+        console.debug('Audit logging function not available (optional feature)');
+        return;
+      }
+      throw funcError;
+    }
   } catch (error: any) {
     console.error('Failed to log audit event:', error);
     // Don't throw - audit logging failures shouldn't break the app

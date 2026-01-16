@@ -29,6 +29,17 @@ self.addEventListener('fetch', (event) => {
     // Skip cross-origin requests
     if (!event.request.url.startsWith(self.location.origin)) return;
 
+    // Skip caching for Vite HMR and development files
+    const url = new URL(event.request.url);
+    if (url.pathname.includes('/node_modules/') || 
+        url.pathname.includes('/@vite/') ||
+        url.pathname.includes('/@react-refresh') ||
+        url.searchParams.has('t') || // Vite cache busting
+        url.pathname.endsWith('.tsx') ||
+        url.pathname.endsWith('.ts')) {
+        return; // Let browser handle these requests normally
+    }
+
     event.respondWith(
         caches.match(event.request).then((response) => {
             if (response) {

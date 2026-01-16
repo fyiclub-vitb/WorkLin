@@ -46,7 +46,7 @@ export interface Page {
   blocks: Block[];
   
   // Database Properties
-  properties?: Record<string, any>; // Typed as any to avoid circular dependency with DatabaseProperty
+  properties?: Record<string, any>; // Typed as any to avoid circular dependency with DatabaseProperty; Custom properties for database items
   propertyValues?: Record<string, any>;
 
   workspaceId?: string; // Optional for backward compatibility
@@ -55,7 +55,6 @@ export interface Page {
   isPublic?: boolean;
   tags?: string[];
   type?: 'document' | 'canvas' | 'kanban' | string;
-  properties?: Record<string, any>; // Custom properties for database items
   views?: ViewDefinition[]; // Saved views configuration
   lastActiveViewId?: string; // Last selected view ID
   createdAt: Date;

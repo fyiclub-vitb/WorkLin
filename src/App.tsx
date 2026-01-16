@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Workspace } from './pages/Workspace';
+import { Settings } from './pages/Settings';
 import { SecuritySettings } from './components/security/SecuritySettings';
 import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
@@ -25,6 +26,7 @@ function App() {
         <Route path="/app" element={<Workspace />} />
         <Route path="/app/search" element={<Workspace />} />
         <Route path="/app/analytics" element={<Workspace />} />
+        <Route path="/app/settings" element={<Settings />} />
         
         <Route path="/security" element={<SecuritySettings />} />
         <Route path="/audit-log" element={<AuditLog />} />

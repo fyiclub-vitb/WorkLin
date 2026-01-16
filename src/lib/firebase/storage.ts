@@ -1,3 +1,11 @@
+/**
+ * @deprecated Firebase Storage is no longer used.
+ * Use Cloudinary instead: import from '../storage/cloudinary'
+ * 
+ * This file is kept for reference only and will not work
+ * since Firebase Storage has been removed from config.
+ */
+/*
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './config';
 
@@ -26,3 +34,4 @@ export const deleteFile = async (path: string) => {
     return { error: error.message };
   }
 };
+*/

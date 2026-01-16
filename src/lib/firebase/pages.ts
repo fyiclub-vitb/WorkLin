@@ -51,13 +51,51 @@ export const updatePage = async (pageId: string, data: any) => {
   }
 };
 
+// Move page to trash (archive)
 export const deletePage = async (pageId: string) => {
   if (!navigator.onLine) {
     await addToQueue({ type: 'deletePage', payload: { pageId } });
     return { error: null, offline: true };
   }
   try {
-    // Ideally, you should also delete all blocks associated with this page here
+    const pageRef = doc(db, PAGES_COLLECTION, pageId);
+    await updateDoc(pageRef, {
+      isArchived: true,
+      archivedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Restore page from trash
+export const restorePage = async (pageId: string) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'restorePage', payload: { pageId } });
+    return { error: null, offline: true };
+  }
+  try {
+    const pageRef = doc(db, PAGES_COLLECTION, pageId);
+    await updateDoc(pageRef, {
+      isArchived: false,
+      archivedAt: null,
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Permanently delete page (only for archived pages)
+export const permanentlyDeletePage = async (pageId: string) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'permanentlyDeletePage', payload: { pageId } });
+    return { error: null, offline: true };
+  }
+  try {
     await deleteDoc(doc(db, PAGES_COLLECTION, pageId));
     return { error: null };
   } catch (error: any) {

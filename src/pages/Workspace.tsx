@@ -9,6 +9,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { Menu } from 'lucide-react';
 import { Toaster } from '../components/ui/toaster';
 import { PageHeader } from '../components/PageHeader';
+import { subscribeToAuth } from '../lib/firebase/auth';
 
 export const Workspace: React.FC = () => {
   const navigate = useNavigate();
@@ -18,11 +19,14 @@ export const Workspace: React.FC = () => {
 
   const {
     workspace,
+    archivedPages,
     currentPage,
     currentPageId,
     setCurrentPageId,
     addPage,
     deletePage,
+    restorePage,
+    permanentlyDeletePage,
     updatePageTitle,
     updatePageIcon,
     updatePageCover,
@@ -34,15 +38,14 @@ export const Workspace: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Check if user is logged in (demo or real)
+  // Check if user is logged in (Firebase auth)
   useEffect(() => {
-    const demoUser = localStorage.getItem('worklin-demo-user');
-    // Also allow real firebase auth users, logic usually handled in useWorkspace or context
-    // This check is specific to the demo mode implementation provided in context
-    if (!demoUser) {
-       // Ideally check real auth here too, but keeping existing logic:
-       // navigate('/login'); 
-    }
+    const unsubscribe = subscribeToAuth((user) => {
+      if (!user) {
+        navigate('/login');
+      }
+    });
+    return () => unsubscribe();
   }, [navigate]);
 
   // Handle keyboard shortcuts
@@ -80,17 +83,30 @@ export const Workspace: React.FC = () => {
 
       <Sidebar
         pages={workspace.pages}
+        archivedPages={archivedPages}
         currentPageId={currentPageId}
         onSelectPage={(pageId) => {
-          setCurrentPageId(pageId);
-          if (isAnalyticsView || isSearchView) {
-             navigate('/app');
+          if (pageId) {
+            setCurrentPageId(pageId);
+            if (isAnalyticsView || isSearchView) {
+              navigate('/app');
+            }
+          } else {
+            // Clear selection and navigate to home
+            setCurrentPageId(null);
+            navigate('/app');
           }
         }}
         onAddPage={() => addPage()}
         onDeletePage={(pageId) => {
-          if (confirm('Are you sure you want to delete this page?')) {
+          if (confirm('Are you sure you want to move this page to trash?')) {
             deletePage(pageId);
+          }
+        }}
+        onRestorePage={(pageId) => restorePage(pageId)}
+        onPermanentlyDeletePage={(pageId) => {
+          if (confirm('Are you sure you want to permanently delete this page? This action cannot be undone.')) {
+            permanentlyDeletePage(pageId);
           }
         }}
         onUpdatePage={(pageId, icon) => updatePageIcon(pageId, icon)}
@@ -110,42 +126,45 @@ export const Workspace: React.FC = () => {
         </div>
       ) : (
         // Standard Page Editor View
-        <div className="flex-1 h-full overflow-y-auto">
+        <div className="flex-1 h-full overflow-hidden">
           {currentPage && (
-            <>
-              <div className="max-w-4xl mx-auto px-12 md:px-24 pt-12 pb-2">
-                <PageHeader
-                  pageId={currentPage.id}
-                  initialTitle={currentPage.title}
-                  onDelete={() => deletePage(currentPage.id)}
-                />
-              </div>
-
-              <PageEditor
-                page={currentPage}
-                allPages={workspace.pages} // FIX: Pass workspace.pages as allPages
-                onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
-                onUpdateBlock={(blockId, updates) =>
-                  currentPageId && updateBlock(currentPageId, blockId, updates)
-                }
-                onDeleteBlock={(blockId) =>
-                  currentPageId && deleteBlock(currentPageId, blockId)
-                }
-                onUpdatePageTitle={(title) =>
-                  currentPageId && updatePageTitle(currentPageId, title)
-                }
-                onUpdatePageCover={(url) =>
-                  currentPageId && updatePageCover(currentPageId, url)
-                }
-                onUpdatePage={(pageId, updates) => {
-                  updatePageProperties(pageId, updates.properties);
-                }}
-              />
-            </>
+            <PageEditor
+              page={currentPage}
+              allPages={workspace.pages} // FIX: Pass workspace.pages as allPages
+              onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
+              onUpdateBlock={(blockId, updates) =>
+                currentPageId && updateBlock(currentPageId, blockId, updates)
+              }
+              onDeleteBlock={(blockId) =>
+                currentPageId && deleteBlock(currentPageId, blockId)
+              }
+              onUpdatePageTitle={(title) =>
+                currentPageId && updatePageTitle(currentPageId, title)
+              }
+              onUpdatePageCover={(url) =>
+                currentPageId && updatePageCover(currentPageId, url || null)
+              }
+              onUpdatePage={(pageId, updates) => {
+                updatePageProperties(pageId, updates.properties);
+              }}
+            />
           )}
           {!currentPage && !currentPageId && (
-            <div className="flex-1 flex items-center justify-center h-full text-gray-400">
-              Select a page to start writing
+            <div className="flex-1 flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="text-center max-w-md px-6">
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  No page selected
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                  Select a page from the sidebar or create a new one to get started
+                </p>
+                <button
+                  onClick={() => addPage()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm font-medium"
+                >
+                  Create New Page
+                </button>
+              </div>
             </div>
           )}
         </div>

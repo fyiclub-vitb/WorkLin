@@ -52,23 +52,28 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
 
     const { doc, provider: wsProvider } = createYjsProvider(pageId);
 
-    wsProvider.on('status', (event: any) => {
-      console.log('Collaboration Status:', event.status);
-    });
+    // Only set up event listeners if provider exists
+    if (wsProvider) {
+      wsProvider.on('status', (event: any) => {
+        console.log('Collaboration Status:', event.status);
+      });
+    }
 
     setYdoc(doc);
     setProvider(wsProvider);
     setIsReady(true);
 
     return () => {
-      wsProvider.destroy();
+      if (wsProvider) {
+        wsProvider.destroy();
+      }
       doc.destroy();
     };
   }, [pageId]);
 
   // 3. Sync User Awareness (Cursor)
   useEffect(() => {
-    if (!provider || !currentUser) return;
+    if (!provider || !currentUser || !provider.awareness) return;
 
     const name = currentUser.displayName || currentUser.email || 'Anonymous';
 

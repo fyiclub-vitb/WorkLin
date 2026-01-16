@@ -161,10 +161,40 @@ export const updatePage = async (pageId: string, updates: Partial<Page>) => {
   }
 };
 
+// Move page to trash (archive)
 export const deletePage = async (pageId: string) => {
   try {
     const pageRef = doc(db, PAGES_COLLECTION, pageId);
-    await deleteDoc(pageRef);
+    await updateDoc(pageRef, {
+      isArchived: true,
+      archivedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Restore page from trash
+export const restorePage = async (pageId: string) => {
+  try {
+    const pageRef = doc(db, PAGES_COLLECTION, pageId);
+    await updateDoc(pageRef, {
+      isArchived: false,
+      archivedAt: null,
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Permanently delete page
+export const permanentlyDeletePage = async (pageId: string) => {
+  try {
+    await deleteDoc(doc(db, PAGES_COLLECTION, pageId));
     return { error: null };
   } catch (error: any) {
     return { error: error.message };

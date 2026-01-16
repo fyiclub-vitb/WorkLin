@@ -6,8 +6,8 @@ import './styles/index.css'
 import app from './firebase'
 console.log("Firebase connected:", app);
 
-// Register Service Worker
-if ('serviceWorker' in navigator) {
+// Register Service Worker (only in production)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(registration => {
       console.log('SW registered: ', registration);

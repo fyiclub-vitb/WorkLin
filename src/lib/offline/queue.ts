@@ -5,7 +5,7 @@ const STORE_NAME = 'offline-queue';
 
 export interface OfflineOperation {
     id?: number;
-    type: 'updatePage' | 'createPage' | 'deletePage' | 'updateBlock' | 'createBlock' | 'deleteBlock';
+    type: 'updatePage' | 'createPage' | 'deletePage' | 'updateBlock' | 'createBlock' | 'deleteBlock' | 'restorePage' | 'permanentlyDeletePage';
     payload: any;
     timestamp: number;
 }
