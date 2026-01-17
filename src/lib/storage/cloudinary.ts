@@ -44,14 +44,10 @@ export const uploadFile = async (
       formData.append('public_id', options.publicId);
     }
     
-    if (options?.resourceType) {
-      formData.append('resource_type', options.resourceType);
-    }
+    // Note: Transformation parameter is NOT allowed with unsigned upload presets
+    // Transformations should be applied via URL after upload or configured in the upload preset
+    // See: https://cloudinary.com/documentation/upload_presets#unsigned_upload_preset_settings
 
-    // Add transformation if provided (e.g., 'w_800,h_600,c_fill,q_auto')
-    if (options?.transformation) {
-      formData.append('transformation', options.transformation);
-    }
 
     // Upload to Cloudinary
     const response = await fetch(
@@ -83,7 +79,15 @@ export const uploadFile = async (
     }
 
     const data = await response.json();
-    return { url: data.secure_url, error: null };
+    let url = data.secure_url;
+    
+    // Apply transformation via URL if provided (since we can't use transformation param with unsigned uploads)
+    if (options?.transformation && url) {
+      // Insert transformation into URL: replace /upload/ with /upload/{transformation}/
+      url = url.replace('/upload/', `/upload/${options.transformation}/`);
+    }
+    
+    return { url, error: null };
   } catch (error: any) {
     console.error('Cloudinary upload error:', error);
     let errorMessage = error.message || 'Upload failed';
