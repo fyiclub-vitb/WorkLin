@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Settings, 
-  X, 
-  FileText, 
-  Home, 
-  Star, 
-  Trash2, 
-  Moon, 
+import {
+  Plus,
+  Search,
+  Settings,
+  X,
+  FileText,
+  Home,
+  Star,
+  Trash2,
+  Moon,
   Sun,
   BarChart2, // Added for Analytics icon
   RotateCcw, // Restore icon
@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../types/workspace';
+import { Template } from '../types/template';
+import { TemplateGallery } from './templates/TemplateGallery';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useToast } from '../hooks/use-toast';
@@ -29,7 +31,7 @@ interface SidebarProps {
   archivedPages?: Page[];
   currentPageId: string | null;
   onSelectPage: (pageId: string | null) => void;
-  onAddPage: () => void;
+  onAddPage: (template?: Template) => void;
   onDeletePage: (pageId: string) => void;
   onRestorePage?: (pageId: string) => void;
   onPermanentlyDeletePage?: (pageId: string) => void;
@@ -75,13 +77,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { isDark, toggleDarkMode } = useDarkMode();
   const { searchQuery, setSearchQuery, filteredPages, inputRef } = usePageSearch(pages);
   const navigate = useNavigate();
+  const [showTemplates, setShowTemplates] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
 
-  const handleAddPage = () => {
-    onAddPage();
+  const handleCreatePage = (template?: Template) => {
+    onAddPage(template);
+    setShowTemplates(false);
     toast({
       title: "Page created",
-      description: "A new page has been added to your workspace.",
+      description: template && template.id !== 'blank' ? `Created from ${template.name}` : "A new page has been added to your workspace.",
       duration: 3000,
     });
   };
@@ -152,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="p-3 space-y-2 border-b border-gray-200/50 dark:border-slate-800/50">
           <button
-            onClick={handleAddPage}
+            onClick={() => setShowTemplates(true)}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-slate-800 dark:hover:to-slate-800 rounded-xl transition-all group hover:scale-[1.02]"
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -189,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation */}
         <div className="px-3 pb-3 border-b border-gray-200/50 dark:border-slate-800/50">
           <div className="space-y-1">
-            <button 
+            <button
               onClick={() => {
                 navigate('/app');
                 // Clear current page selection when going home
@@ -230,17 +234,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <button
               onClick={() => setShowTrash(!showTrash)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all hover:scale-[1.02] ${
-                showTrash 
-                  ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all hover:scale-[1.02] ${showTrash
+                ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                }`}
             >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                showTrash 
-                  ? 'bg-red-100 dark:bg-red-900/30' 
-                  : 'bg-gray-100 dark:bg-slate-800'
-              }`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${showTrash
+                ? 'bg-red-100 dark:bg-red-900/30'
+                : 'bg-gray-100 dark:bg-slate-800'
+                }`}>
                 <Trash2 size={16} className={showTrash ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'} />
               </div>
               <span>Trash</span>
@@ -320,57 +322,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {searchQuery ? 'Search Results' : 'Pages'}
                 </div>
                 {filteredPages.length === 0 ? (
-              <div className="text-center py-12 px-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                  <FileText size={32} className="text-gray-400 dark:text-gray-600" />
-                </div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{searchQuery ? 'No pages found' : 'No pages yet'}</p>
-                {!searchQuery && (
-                  <button
-                    onClick={handleAddPage}
-                    className="mt-3 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                  >
-                    Create your first page
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {filteredPages.map((page) => (
-                  <motion.div
-                    key={page.id}
-                    whileHover={{ x: 2 }}
-                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${currentPageId === page.id
-                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                      }`}
-                    onClick={() => onSelectPage(page.id)}
-                  >
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <IconPicker onChange={(icon) => onUpdatePage?.(page.id, icon)}>
-                        <span className="text-base flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-0.5 transition-colors cursor-pointer">
-                          {page.icon}
-                        </span>
-                      </IconPicker>
+                  <div className="text-center py-12 px-2">
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                      <FileText size={32} className="text-gray-400 dark:text-gray-600" />
                     </div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{searchQuery ? 'No pages found' : 'No pages yet'}</p>
+                    {!searchQuery && (
+                      <button
+                        onClick={() => setShowTemplates(true)}
+                        className="mt-3 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      >
+                        Create your first page
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {filteredPages.map((page) => (
+                      <motion.div
+                        key={page.id}
+                        whileHover={{ x: 2 }}
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${currentPageId === page.id
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                          }`}
+                        onClick={() => onSelectPage(page.id)}
+                      >
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <IconPicker onChange={(icon) => onUpdatePage?.(page.id, icon)}>
+                            <span className="text-base flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-0.5 transition-colors cursor-pointer">
+                              {page.icon}
+                            </span>
+                          </IconPicker>
+                        </div>
 
-                    <span className="flex-1 text-sm font-medium truncate">
-                      <HighlightedText text={page.title} highlight={searchQuery} />
-                    </span>
+                        <span className="flex-1 text-sm font-medium truncate">
+                          <HighlightedText text={page.title} highlight={searchQuery} />
+                        </span>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeletePage(page.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePage(page.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -395,6 +397,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
       </motion.aside>
+
+
+      <TemplateGallery
+        isOpen={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        onSelectTemplate={handleCreatePage}
+      />
     </>
   );
 };

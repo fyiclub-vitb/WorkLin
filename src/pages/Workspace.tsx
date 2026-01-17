@@ -97,7 +97,11 @@ export const Workspace: React.FC = () => {
             navigate('/app');
           }
         }}
-        onAddPage={() => addPage()}
+        onAddPage={(template) => addPage(
+          template?.content.title || undefined,
+          template?.icon || undefined,
+          template?.content.blocks
+        )}
         onDeletePage={(pageId) => {
           if (confirm('Are you sure you want to move this page to trash?')) {
             deletePage(pageId);
@@ -128,26 +132,36 @@ export const Workspace: React.FC = () => {
         // Standard Page Editor View
         <div className="flex-1 h-full overflow-hidden">
           {currentPage && (
-            <PageEditor
-              page={currentPage}
-              allPages={workspace.pages} // FIX: Pass workspace.pages as allPages
-              onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
-              onUpdateBlock={(blockId, updates) =>
-                currentPageId && updateBlock(currentPageId, blockId, updates)
-              }
-              onDeleteBlock={(blockId) =>
-                currentPageId && deleteBlock(currentPageId, blockId)
-              }
-              onUpdatePageTitle={(title) =>
-                currentPageId && updatePageTitle(currentPageId, title)
-              }
-              onUpdatePageCover={(url) =>
-                currentPageId && updatePageCover(currentPageId, url || null)
-              }
-              onUpdatePage={(pageId, updates) => {
-                updatePageProperties(pageId, updates.properties);
-              }}
-            />
+            <>
+              <div className="max-w-4xl mx-auto px-12 md:px-24 pt-12 pb-2">
+                <PageHeader
+                  page={currentPage}
+                  initialTitle={currentPage.title}
+                  onDelete={() => deletePage(currentPage.id)}
+                />
+              </div>
+
+              <PageEditor
+                page={currentPage}
+                allPages={workspace.pages}
+                onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
+                onUpdateBlock={(blockId, updates) =>
+                  currentPageId && updateBlock(currentPageId, blockId, updates)
+                }
+                onDeleteBlock={(blockId) =>
+                  currentPageId && deleteBlock(currentPageId, blockId)
+                }
+                onUpdatePageTitle={(title) =>
+                  currentPageId && updatePageTitle(currentPageId, title)
+                }
+                onUpdatePageCover={(url) =>
+                  currentPageId && updatePageCover(currentPageId, url || null)
+                }
+                onUpdatePage={(pageId, updates) => {
+                  updatePageProperties(pageId, updates.properties);
+                }}
+              />
+            </>
           )}
           {!currentPage && !currentPageId && (
             <div className="flex-1 flex flex-col items-center justify-center h-full text-gray-400">

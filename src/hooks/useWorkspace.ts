@@ -98,12 +98,22 @@ export const useWorkspace = () => {
     setCurrentPageId('1');
   };
 
-  const addPage = (title: string = 'Untitled Page', icon: string = '📝') => {
+  const addPage = (title: string = 'Untitled Page', icon: string = '📝', templateBlocks: Partial<Block>[] = []) => {
     const newPage: Page = {
       id: Date.now().toString(),
       title,
       icon,
-      blocks: [],
+      blocks: templateBlocks.length > 0 ? templateBlocks.map((b, i) => ({
+        id: (Date.now() + i).toString(),
+        type: b.type || 'paragraph',
+        text: b.content || '', // Map content to text for consistency if needed, though Block interface has both
+        content: b.content || '',
+        checked: b.checked || false,
+        properties: b.properties || {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'local-user',
+      } as Block)) : [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -27,7 +27,7 @@ import { DatabaseProperty, RelationProperty as RelationType, RollupProperty as R
 
 interface PageEditorProps {
   page: Page | undefined;
-  allPages: Page[]; // FIX: Change workspace to allPages array
+  allPages: Page[];
   onAddBlock: (type: BlockType) => void;
   onUpdateBlock: (blockId: string, updates: Partial<Block>) => void;
   onDeleteBlock: (blockId: string) => void;
@@ -38,7 +38,7 @@ interface PageEditorProps {
 
 export const PageEditor: React.FC<PageEditorProps> = ({
   page,
-  allPages, // FIX: Use allPages instead of workspace
+  allPages,
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
@@ -59,7 +59,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
       const savedView = page.views.find(v => v.id === page.lastActiveViewId);
       if (savedView) setCurrentView(savedView);
     }
-  }, [page?.id]); // Only reset on page change, avoid loop
+  }, [page?.id]);
 
   // Fetch child pages when in a database view
   useEffect(() => {
@@ -178,14 +178,14 @@ export const PageEditor: React.FC<PageEditorProps> = ({
       <div className={`flex-1 flex flex-col relative overflow-hidden ${!page.cover ? 'bg-white dark:bg-[#1e1e1e]' : ''}`}>
         {/* Cover Image as Background */}
         {page.cover && (
-          <div 
+          <div
             className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
             style={{ backgroundImage: `url(${page.cover})` }}
           >
             <div className="absolute inset-0 bg-black/40 dark:bg-black/60" />
           </div>
         )}
-        
+
         {/* Cover Controls Overlay */}
         <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-20">
           <PageCover
@@ -217,77 +217,73 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                   onChange={(e) => onUpdatePageTitle(e.target.value)}
                   onFocus={() => setIsTitleEditing(true)}
                   onBlur={() => setIsTitleEditing(false)}
-                  className={`w-full font-bold bg-transparent focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600 ${
-                    page.cover 
-                      ? 'text-white text-2xl sm:text-3xl md:text-4xl drop-shadow-lg' 
+                  className={`w-full font-bold bg-transparent focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-600 ${page.cover
+                      ? 'text-white text-2xl sm:text-3xl md:text-4xl drop-shadow-lg'
                       : 'text-gray-900 dark:text-gray-100 text-2xl sm:text-3xl md:text-4xl'
-                  }`}
+                    }`}
                   placeholder="Untitled"
                 />
+
                 {/* View Switcher */}
                 <div className="flex items-center gap-0.5 sm:gap-1 mt-3 sm:mt-4 border-b border-gray-200/50 dark:border-gray-800/50 overflow-x-auto">
                   <button
                     onClick={handleClearView}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                      !currentView 
-                        ? 'border-primary text-primary' 
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${!currentView
+                        ? 'border-primary text-primary'
                         : page.cover
-                        ? 'border-transparent text-white/70 hover:text-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                    }`}
+                          ? 'border-transparent text-white/70 hover:text-white'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                      }`}
                   >
-                    <List size={12} className="sm:w-3.5 sm:h-3.5" /> 
+                    <List size={12} className="sm:w-3.5 sm:h-3.5" />
                     <span className="hidden xs:inline">Document</span>
                   </button>
                   <button
                     onClick={() => handleSwitchView('table')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                      currentView?.type === 'table' 
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${currentView?.type === 'table'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                         : page.cover
-                        ? 'border-transparent text-white/70 hover:text-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                    }`}
+                          ? 'border-transparent text-white/70 hover:text-white'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                      }`}
                   >
-                    <TableIcon size={12} className="sm:w-3.5 sm:h-3.5" /> 
+                    <TableIcon size={12} className="sm:w-3.5 sm:h-3.5" />
                     <span className="hidden xs:inline">Table</span>
                   </button>
                   <button
                     onClick={() => handleSwitchView('board')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                      currentView?.type === 'board' 
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${currentView?.type === 'board'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                         : page.cover
-                        ? 'border-transparent text-white/70 hover:text-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                    }`}
+                          ? 'border-transparent text-white/70 hover:text-white'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                      }`}
                   >
-                    <LayoutGrid size={12} className="sm:w-3.5 sm:h-3.5" /> 
+                    <LayoutGrid size={12} className="sm:w-3.5 sm:h-3.5" />
                     <span className="hidden xs:inline">Board</span>
                   </button>
                   <button
                     onClick={() => handleSwitchView('calendar')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
-                      currentView?.type === 'calendar' 
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-t-md border-b-2 transition-colors flex items-center gap-1 sm:gap-2 whitespace-nowrap ${currentView?.type === 'calendar'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                         : page.cover
-                        ? 'border-transparent text-white/70 hover:text-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                    }`}
+                          ? 'border-transparent text-white/70 hover:text-white'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                      }`}
                   >
-                    <CalendarIcon size={12} className="sm:w-3.5 sm:h-3.5" /> 
+                    <CalendarIcon size={12} className="sm:w-3.5 sm:h-3.5" />
                     <span className="hidden xs:inline">Calendar</span>
                   </button>
                 </div>
               </div>
+
               <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={() => setShowHistory(true)}
-                  className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-white/10 dark:hover:bg-gray-800/50 rounded transition-colors text-xs sm:text-sm ${
-                    page.cover 
-                      ? 'text-white/80 hover:text-white' 
+                  className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-white/10 dark:hover:bg-gray-800/50 rounded transition-colors text-xs sm:text-sm ${page.cover
+                      ? 'text-white/80 hover:text-white'
                       : 'text-gray-700 dark:text-gray-300'
-                  }`}
+                    }`}
                   title="View version history"
                 >
                   <History size={16} className="sm:w-4 sm:h-4" />
@@ -297,7 +293,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
               </div>
             </div>
 
-            {/* Database Properties Section - FIX: Use allPages instead of workspace.pages */}
+            {/* Database Properties Section */}
             {allPages.length > 1 && (
               <div className="mt-4 sm:mt-6 md:mt-8">
                 <PageProperties
@@ -312,13 +308,11 @@ export const PageEditor: React.FC<PageEditorProps> = ({
               </div>
             )}
 
-            {/* Database Properties Section */}
             {properties && Object.keys(properties).length > 0 && (
-              <div className={`mt-4 sm:mt-6 mb-6 sm:mb-8 p-3 sm:p-4 border rounded-lg ${
-                page.cover 
-                  ? 'border-white/20 bg-white/10 backdrop-blur-sm' 
+              <div className={`mt-4 sm:mt-6 mb-6 sm:mb-8 p-3 sm:p-4 border rounded-lg ${page.cover
+                  ? 'border-white/20 bg-white/10 backdrop-blur-sm'
                   : 'border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/20'
-              }`}>
+                }`}>
                 <div className="space-y-3 sm:space-y-4">
                   {Object.entries(properties).map(([name, property]) => {
                     if (property.type === 'relation') {
@@ -358,7 +352,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({
               </div>
             )}
 
-            {/* Blocks Container */}
+            {/* Content Area: Blocks or View */}
             <div className="mt-4 sm:mt-6 md:mt-8">
               {currentView ? (
                 <div className="min-h-[400px] sm:min-h-[500px]">
@@ -382,30 +376,26 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                       className="py-8 sm:py-12"
                     >
                       <div className="text-center mb-6 sm:mb-8">
-                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full mb-4 ${
-                          page.cover 
-                            ? 'bg-white/20 backdrop-blur-sm' 
+                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full mb-4 ${page.cover
+                            ? 'bg-white/20 backdrop-blur-sm'
                             : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
+                          }`}>
                           <Plus size={20} className={`sm:w-6 sm:h-6 ${page.cover ? 'text-white' : 'text-gray-400'}`} />
                         </div>
-                        <p className={`text-base sm:text-lg mb-2 ${
-                          page.cover 
-                            ? 'text-white/90' 
+                        <p className={`text-base sm:text-lg mb-2 ${page.cover
+                            ? 'text-white/90'
                             : 'text-gray-600 dark:text-gray-400'
-                        }`}>
+                          }`}>
                           This page is empty
                         </p>
-                        <p className={`text-xs sm:text-sm mb-4 sm:mb-6 ${
-                          page.cover 
-                            ? 'text-white/70' 
+                        <p className={`text-xs sm:text-sm mb-4 sm:mb-6 ${page.cover
+                            ? 'text-white/70'
                             : 'text-gray-500 dark:text-gray-500'
-                        }`}>
-                          Type <kbd className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs ${
-                            page.cover 
-                              ? 'bg-white/20 text-white' 
+                          }`}>
+                          Type <kbd className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs ${page.cover
+                              ? 'bg-white/20 text-white'
                               : 'bg-gray-100 dark:bg-gray-800'
-                          }`}>/</kbd> to insert blocks
+                            }`}>/</kbd> to insert blocks
                         </p>
                         <button
                           onClick={() => handleAddBlock('paragraph')}
@@ -440,19 +430,17 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                   <div className="mt-6 sm:mt-8 mb-8 sm:mb-12">
                     <button
                       onClick={() => handleAddBlock('paragraph')}
-                      className={`group flex items-center gap-2 px-3 py-2 rounded-md transition-colors w-full ${
-                        page.cover
+                      className={`group flex items-center gap-2 px-3 py-2 rounded-md transition-colors w-full ${page.cover
                           ? 'text-white/60 hover:text-white hover:bg-white/10'
                           : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
+                        }`}
                     >
                       <Plus size={16} className={`sm:w-[18px] sm:h-[18px] opacity-0 group-hover:opacity-100 transition-opacity`} />
                       <span className="text-xs sm:text-sm">
-                        Type <kbd className={`px-1 sm:px-1.5 py-0.5 rounded text-xs ${
-                          page.cover 
-                            ? 'bg-white/20 text-white' 
+                        Type <kbd className={`px-1 sm:px-1.5 py-0.5 rounded text-xs ${page.cover
+                            ? 'bg-white/20 text-white'
                             : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>/</kbd> for commands
+                          }`}>/</kbd> for commands
                       </span>
                     </button>
                   </div>
