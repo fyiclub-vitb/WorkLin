@@ -23,6 +23,7 @@ import { useDarkMode } from '../hooks/useDarkMode';
 import { IconPicker } from './ui/icon-picker';
 import { usePageSearch } from '../hooks/use-page-search';
 import { Logo } from './Logo';
+import { EmptyState } from './ui/empty-state';
 
 interface SidebarProps {
   pages: Page[];
@@ -320,20 +321,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {searchQuery ? 'Search Results' : 'Pages'}
                 </div>
                 {filteredPages.length === 0 ? (
-              <div className="text-center py-12 px-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                  <FileText size={32} className="text-gray-400 dark:text-gray-600" />
-                </div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{searchQuery ? 'No pages found' : 'No pages yet'}</p>
-                {!searchQuery && (
-                  <button
-                    onClick={handleAddPage}
-                    className="mt-3 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                  >
-                    Create your first page
-                  </button>
-                )}
-              </div>
+                  searchQuery ? (
+                    <EmptyState
+                      variant="compact"
+                      title="No pages found"
+                      description="Try a different search."
+                      actionLabel="Clear search"
+                      onAction={() => {
+                        setSearchQuery('');
+                        inputRef.current?.focus();
+                      }}
+                      icon={<FileText size={20} />}
+                    />
+                  ) : (
+                    <EmptyState
+                      variant="compact"
+                      title="No pages yet"
+                      description="Create your first page to get started."
+                      actionLabel="New Page"
+                      onAction={handleAddPage}
+                      icon={<FileText size={20} />}
+                    />
+                  )
             ) : (
               <div className="space-y-1">
                 {filteredPages.map((page) => (

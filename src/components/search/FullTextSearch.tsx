@@ -3,6 +3,7 @@ import { Search, Loader2, FileText, X, TrendingUp, Clock, Sparkles } from 'lucid
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
+import { EmptyState } from '../ui/empty-state';
 import { 
   searchWorkspace, 
   getSearchSuggestions, 
@@ -82,24 +83,15 @@ export const FullTextSearch = () => {
     setError(null);
     setShowSuggestions(false);
 
-    // Debug logging
     const pages = workspace.pages || [];
-    console.log('[Search] Workspace ID:', workspace.id);
-    console.log('[Search] Pages count:', pages.length);
-    console.log('[Search] Pages:', pages.map(p => ({ id: p.id, title: p.title, workspaceId: p.workspaceId })));
-    console.log('[Search] Query:', searchQuery);
 
     try {
-      // Perform client-side search using MiniSearch
       const searchResults = searchWorkspace(searchQuery, pages, {
         workspaceId: workspace.id,
         query: searchQuery,
         limit: 20,
-        fuzzyThreshold: 0.2, // MiniSearch fuzzy threshold
+        fuzzyThreshold: 0.2,
       });
-
-      console.log('[Search] Results count:', searchResults.length);
-      console.log('[Search] Results:', searchResults);
 
       setResults(searchResults);
       
@@ -393,13 +385,24 @@ export const FullTextSearch = () => {
 
         {/* No Results */}
         {results.length === 0 && !loading && !error && query && (
-          <div className="text-center text-muted-foreground py-12">
-            <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No results found</p>
-            <p className="text-sm mt-2">
-              Try adjusting your search query or check for typos
-            </p>
-          </div>
+          <EmptyState
+            title="No results found"
+            description="Try different keywords or check spelling."
+            actionLabel="Clear search"
+            onAction={() => {
+              setQuery('');
+              setResults([]);
+              inputRef.current?.focus();
+            }}
+            secondaryActionLabel="Show all pages"
+            onSecondaryAction={() => {
+              setQuery('');
+              setResults([]);
+              navigate('/app');
+            }}
+            icon={<Search size={24} />}
+            className="py-12"
+          />
         )}
 
         {/* Empty State */}
