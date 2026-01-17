@@ -518,3 +518,141 @@ export const detectSuspiciousActivity = functions.firestore
     }
   });
 
+/**
+ * Firestore trigger: Index page for full-text search when created or updated
+ */
+export const indexPageForSearch = functions.firestore
+  .document('pages/{pageId}')
+  .onWrite(async (change, context) => {
+    const pageId = context.params.pageId;
+    const pageData = change.after.exists ? change.after.data() : null;
+    const previousData = change.before.exists ? change.before.data() : null;
+
+    // If page was deleted, remove from index
+    if (!pageData && previousData) {
+      try {
+        await db.collection('search_index').doc(pageId).delete();
+        console.log(`Removed page ${pageId} from search index`);
+      } catch (error) {
+        console.error(`Error removing page ${pageId} from search index:`, error);
+      }
+      return;
+    }
+
+    // Skip if page is archived
+    if (pageData?.isArchived) {
+      try {
+        await db.collection('search_index').doc(pageId).delete();
+        console.log(`Removed archived page ${pageId} from search index`);
+      } catch (error) {
+        console.error(`Error removing archived page ${pageId} from search index:`, error);
+      }
+      return;
+    }
+
+    // Index or update the page
+    if (pageData) {
+      try {
+        // Extract text content from blocks
+        const blocks = pageData.blocks || [];
+        const contentParts: string[] = [];
+        
+        blocks.forEach((block: any) => {
+          let blockText = '';
+          
+          if (block.text) {
+            blockText += block.text + ' ';
+          }
+          
+          if (block.content) {
+            // Strip HTML tags
+            const plainText = block.content
+              .replace(/<[^>]*>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&amp;/g, '&')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/\s+/g, ' ')
+              .trim();
+            blockText += plainText + ' ';
+          }
+          
+          if (block.properties) {
+            Object.values(block.properties).forEach((value: any) => {
+              if (typeof value === 'string') {
+                blockText += value + ' ';
+              } else if (Array.isArray(value)) {
+                value.forEach((item: any) => {
+                  if (typeof item === 'string') {
+                    blockText += item + ' ';
+                  }
+                });
+              }
+            });
+          }
+          
+          if (blockText.trim()) {
+            contentParts.push(blockText.trim());
+          }
+        });
+
+        const fullContent = contentParts.join(' ');
+        
+        // Normalize text for fuzzy matching
+        const normalizeText = (text: string): string => {
+          return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        };
+
+        // Extract keywords
+        const extractKeywords = (text: string): string[] => {
+          const words = normalizeText(text)
+            .split(/\s+/)
+            .filter(word => word.length >= 3);
+          
+          const stopWords = new Set([
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
+            'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
+            'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those'
+          ]);
+          
+          return Array.from(new Set(words.filter(word => !stopWords.has(word))));
+        };
+
+        const title = pageData.title || 'Untitled';
+        const normalizedTitle = normalizeText(title);
+        const normalizedContent = normalizeText(fullContent);
+        const allText = `${title} ${fullContent}`;
+        const keywords = extractKeywords(allText);
+
+        // Create search index entry
+        const indexEntry = {
+          pageId,
+          workspaceId: pageData.workspaceId || '',
+          title,
+          content: fullContent,
+          tags: pageData.tags || [],
+          type: pageData.type || 'document',
+          createdBy: pageData.createdBy || null,
+          updatedAt: pageData.updatedAt || admin.firestore.FieldValue.serverTimestamp(),
+          indexedAt: admin.firestore.FieldValue.serverTimestamp(),
+          normalizedTitle,
+          normalizedContent,
+          keywords,
+        };
+
+        await db.collection('search_index').doc(pageId).set(indexEntry, { merge: true });
+        console.log(`Indexed page ${pageId} for search`);
+      } catch (error) {
+        console.error(`Error indexing page ${pageId}:`, error);
+      }
+    }
+  });

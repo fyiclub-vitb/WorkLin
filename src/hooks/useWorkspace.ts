@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
 import { createVersion } from '../lib/firebase/history';
+// Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
 
 const STORAGE_KEY = 'worklin-workspace';
 
@@ -57,6 +58,7 @@ export const useWorkspace = () => {
   }, []);
 
   // Auto-save to localStorage
+  // Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
   useEffect(() => {
     if (workspace.pages.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
@@ -106,6 +108,7 @@ export const useWorkspace = () => {
       blocks: [],
       createdAt: new Date(),
       updatedAt: new Date(),
+      workspaceId: workspace.id,
     };
     // FIX 4: Spread ...prev to keep existing workspace properties (id, name, etc.)
     setWorkspace((prev) => ({
@@ -114,6 +117,7 @@ export const useWorkspace = () => {
       updatedAt: new Date()
     }));
     setCurrentPageId(newPage.id);
+    // Note: Search indexing is now client-side only - no action needed here
   };
 
   const deletePage = (pageId: string) => {

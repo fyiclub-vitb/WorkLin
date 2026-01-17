@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { PageEditor } from '../components/PageEditor';
-import { AdvancedSearch } from '../components/search/AdvancedSearch';
+import { FullTextSearch } from '../components/search/FullTextSearch';
 import { AnalyticsDashboard } from '../components/analytics/Dashboard';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { Menu } from 'lucide-react';
@@ -117,7 +117,7 @@ export const Workspace: React.FC = () => {
       {/* Main Content Area */}
       {isSearchView ? (
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
-          <AdvancedSearch />
+          <FullTextSearch />
         </div>
       ) : isAnalyticsView ? (
         // Render Analytics Dashboard taking full available width/height
