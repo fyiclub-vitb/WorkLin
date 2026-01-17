@@ -1,33 +1,29 @@
 /**
- * Full-Text Search Indexing Library
+ * Full-Text Search Indexing Library (Client-Side)
  * 
- * This module handles indexing of workspace content for full-text search.
- * It extracts searchable text from pages and blocks, and stores it in Firestore
- * for efficient searching with fuzzy matching and typo tolerance.
+ * This module handles building searchable documents from workspace pages.
+ * No Firebase/Firestore dependencies - works entirely on the client side.
+ * Compatible with Firebase Spark/free tier - no billing required.
  */
 
-import { collection, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
 import { Page, Block } from '../../types/workspace';
 
-const SEARCH_INDEX_COLLECTION = 'search_index';
-
-export interface SearchIndexEntry {
-  id: string;
+/**
+ * Search document structure for MiniSearch
+ */
+export interface SearchDocument {
+  id: string; // pageId
   pageId: string;
   workspaceId: string;
   title: string;
   content: string; // Plain text extracted from blocks
-  tags: string[];
+  tags: string; // Tags joined as string for search
   type: string;
   createdBy?: string;
-  updatedAt: Date;
-  indexedAt: Date;
-  // For fuzzy matching - store normalized versions
-  normalizedTitle: string;
-  normalizedContent: string;
-  // Keywords extracted for better search
-  keywords: string[];
+  updatedAt: number; // Timestamp for recency ranking
+  // For display
+  originalTitle: string;
+  originalTags: string[];
 }
 
 /**
@@ -75,7 +71,7 @@ function extractTextFromBlock(block: Block): string {
 }
 
 /**
- * Normalize text for fuzzy matching
+ * Normalize text for search
  * Removes accents, converts to lowercase, removes special characters
  */
 export function normalizeText(text: string): string {
@@ -89,108 +85,68 @@ export function normalizeText(text: string): string {
 }
 
 /**
- * Extract keywords from text
+ * Build searchable documents from pages
+ * This is a pure function that transforms pages into search documents
+ * No Firestore writes - entirely client-side
  */
-function extractKeywords(text: string, minLength: number = 3): string[] {
-  const words = normalizeText(text)
-    .split(/\s+/)
-    .filter(word => word.length >= minLength);
+export function buildSearchDocuments(pages: Page[]): SearchDocument[] {
+  console.log('[buildSearchDocuments] Input pages:', pages.length);
   
-  // Remove common stop words
-  const stopWords = new Set([
-    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-    'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
-    'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
-    'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those'
-  ]);
-  
-  return Array.from(new Set(words.filter(word => !stopWords.has(word))));
-}
-
-/**
- * Index a page for full-text search
- */
-export async function indexPage(page: Page): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (!page.workspaceId) {
-      return { success: false, error: 'Page must have a workspaceId' };
-    }
-
-    // Extract all text content from blocks
-    const contentParts: string[] = [];
-    page.blocks?.forEach((block) => {
-      const blockText = extractTextFromBlock(block);
-      if (blockText) {
-        contentParts.push(blockText);
+  const documents = pages
+    .filter(page => {
+      // Only filter out archived pages
+      const isValid = !page.isArchived;
+      if (!isValid) {
+        console.log('[buildSearchDocuments] Filtered out archived page:', page.id);
       }
+      return isValid;
+    })
+    .map(page => {
+      // Extract all text content from blocks
+      const contentParts: string[] = [];
+      if (page.blocks && page.blocks.length > 0) {
+        page.blocks.forEach((block) => {
+          const blockText = extractTextFromBlock(block);
+          if (blockText) {
+            contentParts.push(blockText);
+          }
+        });
+      }
+
+      const fullContent = contentParts.join(' ');
+      const tags = page.tags || [];
+      const tagsString = tags.join(' '); // Join tags for search
+
+      // Convert updatedAt to timestamp for ranking
+      const updatedAt = page.updatedAt instanceof Date 
+        ? page.updatedAt.getTime() 
+        : new Date(page.updatedAt).getTime();
+
+      const doc: SearchDocument = {
+        id: page.id, // MiniSearch uses 'id' field
+        pageId: page.id,
+        workspaceId: page.workspaceId || '',
+        title: page.title || 'Untitled',
+        content: fullContent,
+        tags: tagsString,
+        type: page.type || 'document',
+        createdBy: page.createdBy,
+        updatedAt,
+        // Keep original for display
+        originalTitle: page.title || 'Untitled',
+        originalTags: tags,
+      };
+      
+      console.log('[buildSearchDocuments] Built document:', {
+        id: doc.id,
+        title: doc.title,
+        contentLength: doc.content.length,
+        tags: doc.tags,
+      });
+      
+      return doc;
     });
-
-    const fullContent = contentParts.join(' ');
-    const normalizedTitle = normalizeText(page.title || '');
-    const normalizedContent = normalizeText(fullContent);
-    
-    // Combine title and content for keyword extraction
-    const allText = `${page.title || ''} ${fullContent}`;
-    const keywords = extractKeywords(allText);
-
-    const indexEntry: Omit<SearchIndexEntry, 'id'> = {
-      pageId: page.id,
-      workspaceId: page.workspaceId,
-      title: page.title || 'Untitled',
-      content: fullContent,
-      tags: page.tags || [],
-      type: page.type || 'document',
-      createdBy: page.createdBy,
-      updatedAt: page.updatedAt instanceof Date ? page.updatedAt : new Date(page.updatedAt),
-      indexedAt: new Date(),
-      normalizedTitle,
-      normalizedContent,
-      keywords,
-    };
-
-    // Store in Firestore
-    const indexDocRef = doc(db, SEARCH_INDEX_COLLECTION, page.id);
-    await setDoc(indexDocRef, {
-      ...indexEntry,
-      indexedAt: serverTimestamp(),
-    }, { merge: true });
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('Error indexing page:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Remove a page from the search index
- */
-export async function removePageFromIndex(pageId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const indexDocRef = doc(db, SEARCH_INDEX_COLLECTION, pageId);
-    await deleteDoc(indexDocRef);
-    return { success: true };
-  } catch (error: any) {
-    console.error('Error removing page from index:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Batch index multiple pages
- */
-export async function indexPages(pages: Page[]): Promise<{ success: number; failed: number }> {
-  let success = 0;
-  let failed = 0;
-
-  for (const page of pages) {
-    const result = await indexPage(page);
-    if (result.success) {
-      success++;
-    } else {
-      failed++;
-    }
-  }
-
-  return { success, failed };
+  
+  console.log('[buildSearchDocuments] Output documents:', documents.length);
+  return documents;
 }

@@ -1,21 +1,25 @@
 /**
- * Utility functions for search functionality
+ * Utility functions for search functionality (Client-Side)
+ * 
+ * Note: All search operations are now client-side using MiniSearch.
+ * No Firestore writes required - compatible with Firebase Spark/free tier.
  */
 
-import { indexPages } from './indexing';
+import { buildSearchDocuments } from './indexing';
 import { Page } from '../../types/workspace';
 
 /**
- * Index all pages in a workspace
- * Useful for initial setup or re-indexing
+ * Build search documents from workspace pages
+ * This is a pure function - no side effects, no Firestore writes
+ * Useful for preparing pages for search indexing
  */
-export async function indexWorkspacePages(
+export function buildWorkspaceSearchDocuments(
   pages: Page[],
   workspaceId: string
-): Promise<{ success: number; failed: number }> {
+): ReturnType<typeof buildSearchDocuments> {
   const pagesWithWorkspace = pages
     .filter(p => !p.isArchived)
     .map(page => ({ ...page, workspaceId }));
   
-  return await indexPages(pagesWithWorkspace);
+  return buildSearchDocuments(pagesWithWorkspace);
 }

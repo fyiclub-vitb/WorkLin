@@ -1,407 +1,345 @@
 /**
- * Full-Text Search Service
+ * Full-Text Search Service (Client-Side)
  * 
  * Provides full-text search with fuzzy matching, typo tolerance, and result ranking.
- * Uses Firestore for storage and client-side algorithms for fuzzy matching.
+ * Uses MiniSearch library - entirely client-side, no Firebase billing required.
+ * Compatible with Firebase Spark/free tier.
  */
 
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit as firestoreLimit,
-  addDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
-import { SearchIndexEntry, normalizeText } from './indexing';
+import MiniSearch from 'minisearch';
+import { SearchDocument, buildSearchDocuments } from './indexing';
 import { Page } from '../../types/workspace';
 
-const SEARCH_INDEX_COLLECTION = 'search_index';
-const SEARCH_ANALYTICS_COLLECTION = 'search_analytics';
+const SEARCH_ANALYTICS_KEY = 'search_analytics';
+const RECENT_SEARCHES_KEY = 'worklin-recent-searches';
 
 export interface SearchOptions {
   workspaceId: string;
   query: string;
   limit?: number;
-  fuzzyThreshold?: number; // 0-1, lower = more strict
-  typoTolerance?: number; // Number of character differences allowed
+  fuzzyThreshold?: number; // 0-1, lower = more strict (MiniSearch uses 0.2-1.0)
+  typoTolerance?: number; // MiniSearch handles this via fuzzy option
 }
 
 export interface SearchResult {
   page: Page;
   score: number;
   matches: {
-    title?: boolean;
-    content?: boolean;
-    tags?: boolean;
-    keywords?: boolean;
+    title: boolean;
+    content: boolean;
+    tags: boolean;
   };
-  highlights?: string[]; // Matched text snippets
+  highlights: string[]; // Matched text snippets
+  matchTerms: string[]; // Terms that matched
 }
 
 export interface SearchAnalytics {
   query: string;
-  userId: string;
   workspaceId: string;
   resultsCount: number;
-  timestamp: Date;
-  clickedResultId?: string;
+  timestamp: number;
+  clickedPageId?: string;
 }
 
 /**
- * Calculate Levenshtein distance between two strings
- * Used for fuzzy matching and typo tolerance
+ * Create a MiniSearch index from search documents
  */
-function levenshteinDistance(str1: string, str2: string): number {
-  const m = str1.length;
-  const n = str2.length;
-  const dp: number[][] = Array(m + 1)
-    .fill(null)
-    .map(() => Array(n + 1).fill(0));
-
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (str1[i - 1] === str2[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1];
-      } else {
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1, // deletion
-          dp[i][j - 1] + 1, // insertion
-          dp[i - 1][j - 1] + 1 // substitution
-        );
-      }
-    }
-  }
-
-  return dp[m][n];
-}
-
-/**
- * Calculate similarity score between two strings (0-1)
- */
-function similarityScore(str1: string, str2: string): number {
-  const maxLen = Math.max(str1.length, str2.length);
-  if (maxLen === 0) return 1;
-  const distance = levenshteinDistance(str1, str2);
-  return 1 - distance / maxLen;
-}
-
-/**
- * Check if query matches text with typo tolerance
- */
-function matchesWithTypoTolerance(query: string, text: string, tolerance: number = 1): boolean {
-  const normalizedQuery = normalizeText(query);
-  const normalizedText = normalizeText(text);
+export function createSearchIndex(documents: SearchDocument[]): MiniSearch<SearchDocument> {
+  console.log('[createSearchIndex] Creating index with', documents.length, 'documents');
   
-  // Exact match
-  if (normalizedText.includes(normalizedQuery)) {
-    return true;
+  const index = new MiniSearch<SearchDocument>({
+    fields: ['title', 'content', 'tags', 'type'], // Fields to index
+    storeFields: ['pageId', 'workspaceId', 'title', 'content', 'tags', 'type', 'createdBy', 'updatedAt', 'originalTitle', 'originalTags'], // Fields to store
+    searchOptions: {
+      boost: { title: 3, tags: 2, content: 1 }, // Title matches weighted highest
+      fuzzy: 0.2, // Fuzzy matching threshold (0.2 = typo tolerance)
+      prefix: true, // Enable prefix matching
+    },
+  });
+
+  // Add all documents to the index
+  if (documents.length > 0) {
+    index.addAll(documents);
+    console.log('[createSearchIndex] Index created, document count:', index.documentCount);
+    console.log('[createSearchIndex] Sample indexed doc:', documents[0]);
+  } else {
+    console.warn('[createSearchIndex] No documents to index!');
   }
 
-  // Check if any word in the query matches with tolerance
-  const queryWords = normalizedQuery.split(/\s+/);
-  const textWords = normalizedText.split(/\s+/);
-
-  for (const queryWord of queryWords) {
-    if (queryWord.length < 3) continue; // Skip very short words
-    
-    for (const textWord of textWords) {
-      const distance = levenshteinDistance(queryWord, textWord);
-      const maxLen = Math.max(queryWord.length, textWord.length);
-      
-      // Allow matches if distance is within tolerance relative to word length
-      if (distance <= tolerance || (distance / maxLen) <= 0.3) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  return index;
 }
 
 /**
- * Calculate search score for a result
- * Higher score = better match
+ * Search the index with fuzzy matching and ranking
  */
-function calculateScore(
+export function searchIndex(
   query: string,
-  indexEntry: SearchIndexEntry,
+  index: MiniSearch<SearchDocument>,
+  documents: SearchDocument[],
   options: SearchOptions
-): { score: number; matches: SearchResult['matches']; highlights: string[] } {
-  const normalizedQuery = normalizeText(query);
-  const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
+): SearchResult[] {
+  if (!query.trim()) {
+    return [];
+  }
+
+  const { limit = 20, fuzzyThreshold = 0.2 } = options;
+
+  console.log('[searchIndex] Searching with query:', query);
+  console.log('[searchIndex] Index document count:', index.documentCount);
+  console.log('[searchIndex] Documents available:', documents.length);
+
+  // Perform search with fuzzy matching
+  const searchResults = index.search(query, {
+    fuzzy: fuzzyThreshold, // 0.2 = allows 1-2 character typos
+    prefix: true,
+    boost: { title: 3, tags: 2, content: 1 },
+    weights: { fuzzy: 0.2, prefix: 0.8 }, // Prefer prefix matches over fuzzy
+  });
   
-  let score = 0;
-  const matches: SearchResult['matches'] = {};
-  const highlights: string[] = [];
+  console.log('[searchIndex] Raw search results:', searchResults.length);
+  console.log('[searchIndex] Sample result:', searchResults[0]);
 
-  // Title match (highest weight)
-  if (indexEntry.normalizedTitle.includes(normalizedQuery)) {
-    score += 100;
-    matches.title = true;
-    highlights.push(`Title: ${indexEntry.title}`);
-  } else {
-    // Partial title match
-    const titleScore = queryWords.reduce((acc, word) => {
-      if (indexEntry.normalizedTitle.includes(word)) {
-        return acc + 30;
+  // Map results to SearchResult format
+  const mappedResults: SearchResult[] = searchResults.slice(0, limit)
+    .map((result) => {
+      const doc = documents.find(d => d.id === result.id);
+      if (!doc) {
+        return null;
       }
-      // Fuzzy match in title
-      const similarity = similarityScore(word, indexEntry.normalizedTitle);
-      if (similarity > (options.fuzzyThreshold || 0.7)) {
-        return acc + 20 * similarity;
-      }
-      return acc;
-    }, 0);
-    score += titleScore;
-    if (titleScore > 0) matches.title = true;
-  }
 
-  // Tag match (high weight)
-  if (indexEntry.tags.length > 0) {
-    const tagMatches = indexEntry.tags.filter(tag =>
-      normalizeText(tag).includes(normalizedQuery) ||
-      queryWords.some(word => normalizeText(tag).includes(word))
-    );
-    if (tagMatches.length > 0) {
-      score += 50 * tagMatches.length;
-      matches.tags = true;
-      highlights.push(`Tags: ${tagMatches.join(', ')}`);
+      // Determine what matched
+      const queryLower = query.toLowerCase();
+      const titleLower = doc.title.toLowerCase();
+      const tagsLower = doc.tags.toLowerCase();
+      const contentLower = doc.content.toLowerCase();
+
+      const matches: SearchResult['matches'] = {
+        title: titleLower.includes(queryLower),
+        tags: tagsLower.includes(queryLower) || doc.originalTags.some(tag => 
+          tag.toLowerCase().includes(queryLower)
+        ),
+        content: contentLower.includes(queryLower),
+      };
+
+    // Extract highlights (snippets)
+    const highlights: string[] = [];
+    if (matches.title) {
+      highlights.push(`Title: ${doc.title}`);
     }
-  }
-
-  // Keyword match (medium weight)
-  const keywordMatches = indexEntry.keywords.filter(keyword =>
-    queryWords.some(word => keyword.includes(word) || word.includes(keyword))
-  );
-  if (keywordMatches.length > 0) {
-    score += 20 * keywordMatches.length;
-    matches.keywords = true;
-  }
-
-  // Content match (lower weight, but can accumulate)
-  if (indexEntry.normalizedContent.includes(normalizedQuery)) {
-    score += 30;
-    matches.content = true;
-    // Extract snippet
-    const contentIndex = indexEntry.content.toLowerCase().indexOf(query.toLowerCase());
-    if (contentIndex !== -1) {
-      const start = Math.max(0, contentIndex - 50);
-      const end = Math.min(indexEntry.content.length, contentIndex + query.length + 50);
-      highlights.push(`Content: ...${indexEntry.content.substring(start, end)}...`);
+    if (matches.tags && doc.originalTags.length > 0) {
+      const matchedTags = doc.originalTags.filter(tag => 
+        tag.toLowerCase().includes(queryLower)
+      );
+      if (matchedTags.length > 0) {
+        highlights.push(`Tags: ${matchedTags.join(', ')}`);
+      }
     }
-  } else {
-    // Partial content match
-    const contentScore = queryWords.reduce((acc, word) => {
-      if (indexEntry.normalizedContent.includes(word)) {
-        return acc + 5;
+    if (matches.content) {
+      // Find content snippet
+      const contentIndex = contentLower.indexOf(queryLower);
+      if (contentIndex !== -1) {
+        const start = Math.max(0, contentIndex - 50);
+        const end = Math.min(doc.content.length, contentIndex + query.length + 50);
+        highlights.push(`Content: ...${doc.content.substring(start, end)}...`);
       }
-      // Fuzzy match in content
-      const words = indexEntry.normalizedContent.split(/\s+/);
-      for (const contentWord of words) {
-        if (contentWord.length >= 3) {
-          const similarity = similarityScore(word, contentWord);
-          if (similarity > (options.fuzzyThreshold || 0.7)) {
-            return acc + 3 * similarity;
-          }
-        }
-      }
-      return acc;
-    }, 0);
-    score += contentScore;
-    if (contentScore > 0) matches.content = true;
-  }
+    }
 
-  // Recency boost (pages updated recently get slight boost)
-  const daysSinceUpdate = (Date.now() - indexEntry.updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSinceUpdate < 7) {
-    score += 10;
-  } else if (daysSinceUpdate < 30) {
-    score += 5;
-  }
+    // Calculate final score with recency boost
+    let finalScore = result.score || 0;
+    
+    // Recency boost (pages updated recently get slight boost)
+    const daysSinceUpdate = (Date.now() - doc.updatedAt) / (1000 * 60 * 60 * 24);
+    if (daysSinceUpdate < 7) {
+      finalScore += 10;
+    } else if (daysSinceUpdate < 30) {
+      finalScore += 5;
+    }
 
-  return { score, matches, highlights };
+    // Build page object for result
+    const page: Page = {
+      id: doc.pageId,
+      title: doc.originalTitle,
+      icon: '',
+      blocks: [], // Will be loaded separately if needed
+      tags: doc.originalTags,
+      type: doc.type as any,
+      createdBy: doc.createdBy,
+      createdAt: new Date(doc.updatedAt - 86400000), // Approximate
+      updatedAt: new Date(doc.updatedAt),
+      workspaceId: doc.workspaceId,
+    };
+
+      return {
+        page,
+        score: finalScore,
+        matches,
+        highlights: highlights.slice(0, 3),
+        matchTerms: result.terms || [],
+      };
+    })
+    .filter((r): r is SearchResult => r !== null);
+
+  console.log('[searchIndex] Mapped results:', mappedResults.length);
+  return mappedResults;
 }
 
 /**
- * Perform full-text search
+ * Search workspace pages
+ * Main entry point for search functionality
  */
-export async function fullTextSearch(
-  options: SearchOptions
-): Promise<{ results: SearchResult[]; error?: string }> {
-  try {
-    const { workspaceId, query: searchQuery, limit: resultLimit = 50 } = options;
-    
-    if (!searchQuery.trim()) {
-      return { results: [] };
-    }
-
-    // Fetch all indexed pages for the workspace
-    const indexRef = collection(db, SEARCH_INDEX_COLLECTION);
-    const q = query(
-      indexRef,
-      where('workspaceId', '==', workspaceId),
-      orderBy('updatedAt', 'desc'),
-      firestoreLimit(200) // Fetch more than needed for better ranking
-    );
-
-    const snapshot = await getDocs(q);
-    const indexEntries: SearchIndexEntry[] = [];
-    
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      indexEntries.push({
-        id: doc.id,
-        ...data,
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        indexedAt: data.indexedAt?.toDate() || new Date(),
-      } as SearchIndexEntry);
-    });
-
-    // Filter and score results
-    const results: SearchResult[] = [];
-    const typoTolerance = options.typoTolerance || 2;
-
-    for (const entry of indexEntries) {
-      // Check if entry matches query (with typo tolerance)
-      const matchesQuery =
-        matchesWithTypoTolerance(searchQuery, entry.title, typoTolerance) ||
-        matchesWithTypoTolerance(searchQuery, entry.content, typoTolerance) ||
-        entry.tags.some(tag => matchesWithTypoTolerance(searchQuery, tag, typoTolerance)) ||
-        entry.keywords.some(keyword => matchesWithTypoTolerance(searchQuery, keyword, typoTolerance));
-
-      if (matchesQuery) {
-        const { score, matches, highlights } = calculateScore(searchQuery, entry, options);
-        
-        if (score > 0) {
-          // Fetch the actual page data
-          const page: Page = {
-            id: entry.pageId,
-            title: entry.title,
-            icon: '',
-            blocks: [], // Will be loaded separately if needed
-            tags: entry.tags,
-            type: entry.type as any,
-            createdBy: entry.createdBy,
-            createdAt: entry.updatedAt, // Approximate
-            updatedAt: entry.updatedAt,
-            workspaceId: entry.workspaceId,
-          };
-
-          results.push({
-            page,
-            score,
-            matches,
-            highlights: highlights.slice(0, 3), // Limit highlights
-          });
-        }
-      }
-    }
-
-    // Sort by score (descending)
-    results.sort((a, b) => b.score - a.score);
-
-    // Limit results
-    const limitedResults = results.slice(0, resultLimit);
-
-    // Note: Search analytics are logged by the calling component with user context
-    return { results: limitedResults };
-  } catch (error: any) {
-    console.error('Search error:', error);
-    return { results: [], error: error.message };
+export function searchWorkspace(
+  query: string,
+  pages: Page[],
+  config: SearchOptions
+): SearchResult[] {
+  console.log('[searchWorkspace] Input:', { query, pagesCount: pages.length, workspaceId: config.workspaceId });
+  
+  if (!query.trim() || !pages.length) {
+    console.log('[searchWorkspace] Early return - empty query or pages');
+    return [];
   }
+
+  // Filter pages - include pages that match workspaceId OR pages without workspaceId (for backward compatibility)
+  const filteredPages = pages.filter(p => {
+    if (p.isArchived) return false;
+    // If page has workspaceId, it must match
+    if (p.workspaceId) {
+      return p.workspaceId === config.workspaceId;
+    }
+    // If page doesn't have workspaceId, include it (for pages created before workspaceId was added)
+    return true;
+  });
+  
+  // Ensure all filtered pages have workspaceId set
+  const pagesWithWorkspaceId = filteredPages.map(p => ({
+    ...p,
+    workspaceId: p.workspaceId || config.workspaceId,
+  }));
+  
+  console.log('[searchWorkspace] Filtered pages:', filteredPages.length);
+  console.log('[searchWorkspace] Filtered pages details:', filteredPages.map(p => ({ 
+    id: p.id, 
+    title: p.title, 
+    workspaceId: p.workspaceId,
+    blocksCount: p.blocks?.length || 0 
+  })));
+
+  // Build search documents from pages
+  const documents = buildSearchDocuments(pagesWithWorkspaceId);
+  console.log('[searchWorkspace] Documents built:', documents.length);
+  console.log('[searchWorkspace] Sample document:', documents[0]);
+
+  if (documents.length === 0) {
+    console.log('[searchWorkspace] No documents to index');
+    return [];
+  }
+
+  // Create search index
+  const index = createSearchIndex(documents);
+  console.log('[searchWorkspace] Index created, document count:', index.documentCount);
+
+  // Perform search
+  const results = searchIndex(query, index, documents, config);
+  console.log('[searchWorkspace] Search results:', results.length);
+  
+  return results;
 }
 
 /**
  * Get search suggestions based on query
+ * Uses recent searches and indexed content
  */
-export async function getSearchSuggestions(
+export function getSearchSuggestions(
   workspaceId: string,
   partialQuery: string,
+  pages: Page[],
   limit: number = 5
-): Promise<string[]> {
-  try {
-    if (!partialQuery.trim() || partialQuery.length < 2) {
-      return [];
+): string[] {
+  if (!partialQuery.trim() || partialQuery.length < 2) {
+    // Return recent searches if no query
+    return getRecentSearches(limit);
+  }
+
+  const suggestions = new Set<string>();
+  const queryLower = partialQuery.toLowerCase();
+
+  // Get suggestions from recent searches
+  const recent = getRecentSearches(20);
+  recent.forEach(search => {
+    if (search.toLowerCase().includes(queryLower) || search.toLowerCase().startsWith(queryLower)) {
+      suggestions.add(search);
+    }
+  });
+
+  // Get suggestions from page titles and tags
+  const documents = buildSearchDocuments(pages.filter(p => p.workspaceId === workspaceId));
+  documents.forEach(doc => {
+    const titleLower = doc.title.toLowerCase();
+    if (titleLower.startsWith(queryLower) || titleLower.includes(queryLower)) {
+      suggestions.add(doc.title);
     }
 
-    const normalizedQuery = normalizeText(partialQuery);
-    
-    // Fetch recent searches from analytics
-    const analyticsRef = collection(db, SEARCH_ANALYTICS_COLLECTION);
-    const q = query(
-      analyticsRef,
-      where('workspaceId', '==', workspaceId),
-      orderBy('timestamp', 'desc'),
-      firestoreLimit(100)
-    );
-
-    const snapshot = await getDocs(q);
-    const suggestions = new Set<string>();
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const query = data.query || '';
-      const normalized = normalizeText(query);
-      
-      // Check if query starts with or contains the partial query
-      if (normalized.startsWith(normalizedQuery) || normalized.includes(normalizedQuery)) {
-        suggestions.add(query);
+    // Add tag suggestions
+    doc.originalTags.forEach(tag => {
+      const tagLower = tag.toLowerCase();
+      if (tagLower.startsWith(queryLower)) {
+        suggestions.add(tag);
       }
     });
+  });
 
-    // Also get suggestions from indexed content (titles, tags)
-    const indexRef = collection(db, SEARCH_INDEX_COLLECTION);
-    const indexQuery = query(
-      indexRef,
-      where('workspaceId', '==', workspaceId),
-      firestoreLimit(50)
-    );
+  return Array.from(suggestions).slice(0, limit);
+}
 
-    const indexSnapshot = await getDocs(indexQuery);
-    indexSnapshot.forEach((doc) => {
-      const data = doc.data();
-      const title = data.title || '';
-      const normalizedTitle = normalizeText(title);
-      
-      if (normalizedTitle.startsWith(normalizedQuery)) {
-        suggestions.add(title);
-      }
+/**
+ * Get recent searches from localStorage
+ */
+export function getRecentSearches(limit: number = 10): string[] {
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    if (stored) {
+      return JSON.parse(stored).slice(0, limit);
+    }
+  } catch (e) {
+    console.error('Error loading recent searches:', e);
+  }
+  return [];
+}
 
-      // Add tag suggestions
-      const tags = data.tags || [];
-      tags.forEach((tag: string) => {
-        const normalizedTag = normalizeText(tag);
-        if (normalizedTag.startsWith(normalizedQuery)) {
-          suggestions.add(tag);
-        }
-      });
-    });
-
-    return Array.from(suggestions).slice(0, limit);
-  } catch (error: any) {
-    console.error('Error getting suggestions:', error);
-    return [];
+/**
+ * Save a search to recent searches
+ */
+export function saveRecentSearch(query: string): void {
+  try {
+    const recent = getRecentSearches(50); // Get more to avoid duplicates
+    const updated = [query, ...recent.filter(s => s !== query)].slice(0, 10);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Error saving recent search:', e);
   }
 }
 
 /**
- * Log search analytics
+ * Log search analytics to localStorage
+ * No Firestore writes - entirely client-side
  */
-export async function logSearchAnalytics(analytics: SearchAnalytics): Promise<void> {
+export function logSearchAnalytics(analytics: Omit<SearchAnalytics, 'timestamp'>): void {
   try {
-    await addDoc(collection(db, SEARCH_ANALYTICS_COLLECTION), {
+    const existing = localStorage.getItem(SEARCH_ANALYTICS_KEY);
+    const analyticsList: SearchAnalytics[] = existing ? JSON.parse(existing) : [];
+    
+    const entry: SearchAnalytics = {
       ...analytics,
-      timestamp: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error('Error logging search analytics:', error);
+      timestamp: Date.now(),
+    };
+
+    analyticsList.push(entry);
+    
+    // Keep only last 1000 entries to avoid localStorage bloat
+    const trimmed = analyticsList.slice(-1000);
+    localStorage.setItem(SEARCH_ANALYTICS_KEY, JSON.stringify(trimmed));
+  } catch (e) {
+    console.error('Error logging search analytics:', e);
     // Don't throw - analytics failures shouldn't break search
   }
 }
@@ -409,22 +347,48 @@ export async function logSearchAnalytics(analytics: SearchAnalytics): Promise<vo
 /**
  * Log when a search result is clicked
  */
-export async function logSearchClick(
+export function logSearchClick(
   query: string,
   pageId: string,
-  userId: string,
   workspaceId: string
-): Promise<void> {
+): void {
   try {
-    await addDoc(collection(db, SEARCH_ANALYTICS_COLLECTION), {
+    const existing = localStorage.getItem(SEARCH_ANALYTICS_KEY);
+    const analyticsList: SearchAnalytics[] = existing ? JSON.parse(existing) : [];
+    
+    const entry: SearchAnalytics = {
       query,
-      userId,
       workspaceId,
-      clickedResultId: pageId,
-      timestamp: serverTimestamp(),
-      type: 'click',
-    });
-  } catch (error) {
-    console.error('Error logging search click:', error);
+      resultsCount: 0, // Not applicable for clicks
+      timestamp: Date.now(),
+      clickedPageId: pageId,
+    };
+
+    analyticsList.push(entry);
+    
+    // Keep only last 1000 entries
+    const trimmed = analyticsList.slice(-1000);
+    localStorage.setItem(SEARCH_ANALYTICS_KEY, JSON.stringify(trimmed));
+  } catch (e) {
+    console.error('Error logging search click:', e);
   }
+}
+
+/**
+ * Get search analytics from localStorage
+ */
+export function getSearchAnalytics(workspaceId?: string): SearchAnalytics[] {
+  try {
+    const stored = localStorage.getItem(SEARCH_ANALYTICS_KEY);
+    if (stored) {
+      const analytics: SearchAnalytics[] = JSON.parse(stored);
+      if (workspaceId) {
+        return analytics.filter(a => a.workspaceId === workspaceId);
+      }
+      return analytics;
+    }
+  } catch (e) {
+    console.error('Error loading search analytics:', e);
+  }
+  return [];
 }

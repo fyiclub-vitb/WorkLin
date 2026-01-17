@@ -1,28 +1,25 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, Loader2, FileText, X, TrendingUp, Clock, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card } from '../ui/card';
-import { fullTextSearch, getSearchSuggestions, logSearchClick, logSearchAnalytics, SearchResult } from '../../lib/search/search';
+import { 
+  searchWorkspace, 
+  getSearchSuggestions, 
+  logSearchClick, 
+  logSearchAnalytics,
+  saveRecentSearch,
+  getRecentSearches,
+  SearchResult 
+} from '../../lib/search/search';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import app from '../../firebase';
 
 export const FullTextSearch = () => {
   const { workspace } = useWorkspace();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  
-  useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return unsubscribe;
-  }, []);
 
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,23 +28,13 @@ export const FullTextSearch = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load recent searches from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('worklin-recent-searches');
-    if (stored) {
-      try {
-        setRecentSearches(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error loading recent searches:', e);
-      }
-    }
-  }, []);
+  // Get recent searches
+  const recentSearches = useMemo(() => getRecentSearches(10), []);
 
   // Debounced search suggestions
   useEffect(() => {
@@ -56,14 +43,23 @@ export const FullTextSearch = () => {
     }
 
     if (query.trim().length >= 2 && workspace?.id) {
-      debounceTimerRef.current = setTimeout(async () => {
-        const suggs = await getSearchSuggestions(workspace.id, query, 5);
+      debounceTimerRef.current = setTimeout(() => {
+        const suggs = getSearchSuggestions(
+          workspace.id, 
+          query, 
+          workspace.pages || [], 
+          5
+        );
         setSuggestions(suggs);
         setShowSuggestions(true);
       }, 300);
     } else {
       setSuggestions([]);
-      setShowSuggestions(false);
+      if (query.length === 0 && recentSearches.length > 0) {
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
     }
 
     return () => {
@@ -71,7 +67,7 @@ export const FullTextSearch = () => {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [query, workspace?.id]);
+  }, [query, workspace?.id, workspace.pages, recentSearches.length]);
 
   const performSearch = useCallback(async (searchQuery: string) => {
     if (!workspace?.id || !searchQuery.trim()) {
@@ -86,46 +82,57 @@ export const FullTextSearch = () => {
     setError(null);
     setShowSuggestions(false);
 
+    // Debug logging
+    const pages = workspace.pages || [];
+    console.log('[Search] Workspace ID:', workspace.id);
+    console.log('[Search] Pages count:', pages.length);
+    console.log('[Search] Pages:', pages.map(p => ({ id: p.id, title: p.title, workspaceId: p.workspaceId })));
+    console.log('[Search] Query:', searchQuery);
+
     try {
-      const searchResults = await fullTextSearch({
+      // Perform client-side search using MiniSearch
+      const searchResults = searchWorkspace(searchQuery, pages, {
         workspaceId: workspace.id,
         query: searchQuery,
         limit: 20,
-        fuzzyThreshold: 0.7,
-        typoTolerance: 2,
+        fuzzyThreshold: 0.2, // MiniSearch fuzzy threshold
       });
+
+      console.log('[Search] Results count:', searchResults.length);
+      console.log('[Search] Results:', searchResults);
+
+      setResults(searchResults);
       
-      // Log search with user ID if available
-      if (user && workspace?.id) {
-        logSearchAnalytics({
-          query: searchQuery,
-          userId: user.uid,
-          workspaceId: workspace.id,
-          resultsCount: searchResults.results.length,
-          timestamp: new Date(),
-        }).catch(err => console.error('Failed to log search:', err));
+      // Save to recent searches
+      if (searchQuery.trim()) {
+        saveRecentSearch(searchQuery);
       }
 
-      if (searchResults.error) {
-        setError(searchResults.error);
-        setResults([]);
-      } else {
-        setResults(searchResults.results);
-        
-        // Save to recent searches
-        if (searchQuery.trim()) {
-          const updated = [searchQuery, ...recentSearches.filter(s => s !== searchQuery)].slice(0, 10);
-          setRecentSearches(updated);
-          localStorage.setItem('worklin-recent-searches', JSON.stringify(updated));
-        }
+      // Log search analytics (localStorage only - no Firestore)
+      logSearchAnalytics({
+        query: searchQuery,
+        workspaceId: workspace.id,
+        resultsCount: searchResults.length,
+      });
+
+      if (searchResults.length === 0) {
+        toast({
+          title: 'No results found',
+          description: 'Try adjusting your search query',
+        });
       }
     } catch (err: any) {
       setError(err.message || 'Search failed');
       setResults([]);
+      toast({
+        title: 'Search error',
+        description: err.message || 'An error occurred while searching',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
-  }, [workspace?.id, recentSearches]);
+  }, [workspace?.id, workspace.pages, toast]);
 
   const handleSearch = () => {
     performSearch(query);
@@ -158,8 +165,9 @@ export const FullTextSearch = () => {
   };
 
   const handleResultClick = async (result: SearchResult) => {
-    if (user && workspace?.id) {
-      await logSearchClick(query, result.page.id, user.uid, workspace.id);
+    if (workspace?.id) {
+      // Log click analytics (localStorage only)
+      logSearchClick(query, result.page.id, workspace.id);
     }
     navigate(`/workspace/${workspace?.id}/page/${result.page.id}`);
   };
@@ -198,6 +206,8 @@ export const FullTextSearch = () => {
         </div>
         <p className="text-sm text-muted-foreground">
           Search across all workspace content with fuzzy matching and typo tolerance
+          <br />
+          <span className="text-xs">Client-side search - no Firebase billing required</span>
         </p>
 
         {/* Search Input */}
@@ -334,9 +344,9 @@ export const FullTextSearch = () => {
                             Tag
                           </span>
                         )}
-                        {result.matches.keywords && (
+                        {result.matches.content && (
                           <span className="text-xs bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
-                            Keyword
+                            Content
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground">

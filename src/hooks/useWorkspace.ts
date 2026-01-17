@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
 import { createVersion } from '../lib/firebase/history';
-import { indexPage } from '../lib/search/indexing';
+// Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
 
 const STORAGE_KEY = 'worklin-workspace';
 
@@ -57,24 +57,11 @@ export const useWorkspace = () => {
     }
   }, []);
 
-  // Auto-save to localStorage and index pages for search
+  // Auto-save to localStorage
+  // Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
   useEffect(() => {
     if (workspace.pages.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
-      
-      // Index all active pages for search (debounced to avoid too many calls)
-      const indexTimer = setTimeout(() => {
-        workspace.pages
-          .filter(p => !p.isArchived && workspace.id)
-          .forEach(page => {
-            const pageWithWorkspace = { ...page, workspaceId: workspace.id };
-            indexPage(pageWithWorkspace).catch(err => {
-              console.error(`Failed to index page ${page.id}:`, err);
-            });
-          });
-      }, 1000); // Debounce by 1 second
-      
-      return () => clearTimeout(indexTimer);
     }
   }, [workspace]);
 
@@ -130,11 +117,7 @@ export const useWorkspace = () => {
       updatedAt: new Date()
     }));
     setCurrentPageId(newPage.id);
-    
-    // Index the new page for search
-    indexPage(newPage).catch(err => {
-      console.error(`Failed to index new page:`, err);
-    });
+    // Note: Search indexing is now client-side only - no action needed here
   };
 
   const deletePage = (pageId: string) => {
