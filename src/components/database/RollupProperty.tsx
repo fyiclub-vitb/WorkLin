@@ -10,18 +10,20 @@ interface RollupPropertyProps {
   allPages: Page[];
 }
 
+// This calculates a summary value from related pages
+// For example: sum of all task hours in a project
 export const RollupProperty: React.FC<RollupPropertyProps> = ({
   page,
   property,
   allPages,
 }) => {
-  // Calculate the rollup value
+  // Calculate the rollup value (could be sum, count, average, etc.)
   const rollupValue = useMemo(
     () => calculateRollup(page, property, allPages),
     [page, property, allPages]
   );
 
-  // Format the display value based on aggregation type
+  // Format based on what kind of calculation we did
   const formatValue = (value: any): string => {
     if (value === null || value === undefined) {
       return '—';
@@ -62,7 +64,7 @@ export const RollupProperty: React.FC<RollupPropertyProps> = ({
     }
   };
 
-  // Get icon based on aggregation type
+  // Pick an icon based on the type of aggregation
   const getIcon = () => {
     switch (property.aggregation) {
       case 'count':
@@ -88,16 +90,19 @@ export const RollupProperty: React.FC<RollupPropertyProps> = ({
         {property.name}
       </label>
 
-      {/* Rollup Value Display */}
+      {/* Display the calculated rollup value */}
       <div className="px-4 py-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
         <div className="flex items-center justify-between">
+          {/* Show what calculation we did (sum, average, etc.) */}
           <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
             {property.aggregation.replace(/_/g, ' ')}
           </span>
+          {/* Show the result */}
           <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {formatValue(rollupValue)}
           </span>
         </div>
+        {/* Show where the data comes from */}
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           From {property.relationProperty} → {property.targetProperty}
         </div>
