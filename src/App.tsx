@@ -26,6 +26,7 @@ function App() {
         <Route path="/app" element={<Workspace />} />
         <Route path="/app/search" element={<Workspace />} />
         <Route path="/app/analytics" element={<Workspace />} />
+        <Route path="/app/webhooks" element={<Workspace />} />
         <Route path="/app/settings" element={<Settings />} />
         
         <Route path="/security" element={<SecuritySettings />} />
