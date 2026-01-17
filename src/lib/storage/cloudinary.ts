@@ -49,15 +49,15 @@ export const uploadFile = async (
     if (formData.has('transformation')) {
       formData.delete('transformation');
     }
+    // Prevent resource_type being incorrectly set by third-party code
+    if (formData.has('resource_type')) {
+      formData.delete('resource_type');
+    }
     if (options?.transformation) {
       // We will apply transformation via URL after upload (unsigned uploads disallow sending it).
-      console.warn('Not sending transformation in upload request for unsigned preset; applying via URL after upload.');
+      // eslint-disable-next-line no-console
+      console.warn('Cloudinary: not sending transformation in upload request for unsigned preset; applying via URL after upload.');
     }
-
-    // Note: Transformation parameter is NOT allowed with unsigned upload presets
-    // Transformations should be applied via URL after upload or configured in the upload preset
-    // See: https://cloudinary.com/documentation/upload_presets#unsigned_upload_preset_settings
-
 
     // Upload to Cloudinary
     const response = await fetch(
