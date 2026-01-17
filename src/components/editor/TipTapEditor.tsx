@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -10,6 +10,10 @@ import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import { Block } from '../../types/workspace';
 import { cn } from '../../lib/utils';
 import { useCollaboration } from '../collaboration/CollaborationProvider';
+import { MentionExtension } from './MentionExtension';
+import { LinkExtension } from './LinkExtension';
+import { updateBacklinks } from '../../lib/firebase/links';
+import debounce from 'lodash/debounce';
 
 interface TipTapEditorProps {
   block: Block;
@@ -28,6 +32,26 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
 }) => {
   const { ydoc, provider, isReady } = useCollaboration();
 
+  // Debounced backlink update to avoid too many writes
+  const debouncedBacklinkUpdate = useCallback(
+    debounce((html: string) => {
+      // Find page ID from block context? 
+      // Block has pageId property usually, but here 'block' interface has 'pageId' if we look at db schema, 
+      // but the prop passed might be a sub-block. 
+      // Assuming block resides on a page, we need the page ID. 
+      // The block object in 'src/types/workspace.ts' has 'pageId' usually? 
+      // Checking workspace.ts: Block doesn't explicitly have pageId in interface but database.ts adds it.
+      // We'll cast block to any or assume passed block has page context if possible.
+      // If not available, we might skip backlink updates here or need to pass pageId prop.
+      // For now, let's try to access block.pageId if it exists.
+      const pageId = (block as any).pageId;
+      if (pageId) {
+        updateBacklinks(pageId, html);
+      }
+    }, 2000),
+    [block]
+  );
+
   // Define basic extensions
   const extensions = [
     StarterKit.configure({
@@ -40,6 +64,19 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
     Link.configure({
       openOnClick: false,
       HTMLAttributes: { class: 'text-primary underline cursor-pointer' },
+      validate: href => /^https?:\/\//.test(href), // Optional validation
+    }).extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          'data-page-id': {
+            default: null,
+          },
+          class: {
+            default: 'text-primary underline cursor-pointer',
+          }
+        }
+      }
     }),
     Image.configure({
       inline: true,
@@ -49,6 +86,8 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
     CodeBlock.configure({
       HTMLAttributes: { class: 'bg-gray-100 dark:bg-gray-800 rounded p-4 font-mono text-sm' },
     }),
+    MentionExtension,
+    LinkExtension,
   ];
 
   // Only add collaboration extensions if we are connected
@@ -57,7 +96,7 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
       Collaboration.configure({
         document: ydoc,
         field: block.id,
-      }) as any, 
+      }) as any,
       CollaborationCursor.configure({
         provider: provider,
       }) as any
@@ -72,6 +111,7 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       onUpdate(html);
+      debouncedBacklinkUpdate(html);
     },
     editorProps: {
       attributes: {
