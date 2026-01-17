@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { PageEditor } from '../components/PageEditor';
-import { AdvancedSearch } from '../components/search/AdvancedSearch';
+import { FullTextSearch } from '../components/search/FullTextSearch';
 import { AnalyticsDashboard } from '../components/analytics/Dashboard';
+import { WebhookManager } from '../components/integrations/WebhookManager';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { Menu } from 'lucide-react';
 import { Toaster } from '../components/ui/toaster';
@@ -16,6 +17,7 @@ export const Workspace: React.FC = () => {
   const location = useLocation();
   const isSearchView = location.pathname === '/app/search';
   const isAnalyticsView = location.pathname === '/app/analytics';
+  const isWebhooksView = location.pathname === '/app/webhooks';
 
   const {
     workspace,
@@ -88,7 +90,7 @@ export const Workspace: React.FC = () => {
         onSelectPage={(pageId) => {
           if (pageId) {
             setCurrentPageId(pageId);
-            if (isAnalyticsView || isSearchView) {
+            if (isAnalyticsView || isSearchView || isWebhooksView) {
               navigate('/app');
             }
           } else {
@@ -117,7 +119,11 @@ export const Workspace: React.FC = () => {
       {/* Main Content Area */}
       {isSearchView ? (
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
-          <AdvancedSearch />
+          <FullTextSearch />
+        </div>
+      ) : isWebhooksView ? (
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
+          <WebhookManager />
         </div>
       ) : isAnalyticsView ? (
         // Render Analytics Dashboard taking full available width/height
