@@ -2,6 +2,15 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as speakeasy from 'speakeasy';
 
+// Load environment variables from .env file (for local development)
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    require('dotenv').config();
+  } catch (e) {
+    // dotenv not installed, continue without it
+  }
+}
+
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -10,6 +19,18 @@ const db = admin.firestore();
  * Rate limiting map (in production, use Redis or similar)
  */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+/**
+ * Gemini API rate limiting map (separate from general rate limiting)
+ * Limits: 15 requests per minute per user (configurable)
+ */
+const geminiRateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+// Gemini API rate limit configuration
+const GEMINI_RATE_LIMIT = {
+  REQUESTS_PER_MINUTE: 15, // 15 requests per minute per user
+  WINDOW_MS: 60000, // 1 minute window
+};
 
 /**
  * Get client IP from request
@@ -36,6 +57,31 @@ function checkRateLimit(userId: string, ip: string): boolean {
   }
 
   if (limit.count >= 60) {
+    // Rate limit exceeded
+    return false;
+  }
+
+  limit.count++;
+  return true;
+}
+
+/**
+ * Check Gemini API rate limit
+ * Returns true if request is allowed, false if rate limit exceeded
+ */
+function checkGeminiRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const limit = geminiRateLimitMap.get(userId);
+
+  if (!limit || now > limit.resetTime) {
+    geminiRateLimitMap.set(userId, { 
+      count: 1, 
+      resetTime: now + GEMINI_RATE_LIMIT.WINDOW_MS 
+    });
+    return true;
+  }
+
+  if (limit.count >= GEMINI_RATE_LIMIT.REQUESTS_PER_MINUTE) {
     // Rate limit exceeded
     return false;
   }
@@ -114,28 +160,58 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
  * Callable function: Process AI Writing Actions
- * Securely uses the Gemini API key from the backend environment
+ * Uses Gemini API key directly from environment variables
+ * Includes rate limiting to prevent abuse
  */
 export const processAIAction = functions
-  .runWith({ secrets: ['GEMINI_API_KEY'] }) // Ensures the function has access to the secret
   .https.onCall(async (data, context) => {
     // 1. Authentication Check
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
+    const userId = context.auth.uid;
     const { prompt, task, targetLanguage, tone } = data.data;
+
+    // 2. Rate Limiting Check (Gemini API specific)
+    if (!checkGeminiRateLimit(userId)) {
+      throw new functions.https.HttpsError(
+        'resource-exhausted',
+        `Rate limit exceeded. Maximum ${GEMINI_RATE_LIMIT.REQUESTS_PER_MINUTE} AI requests per minute. Please try again later.`
+      );
+    }
+
+    // 3. Get API Key directly from environment variables
+    // Set GEMINI_API_KEY in .env file (local) or Firebase Functions config (production)
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      throw new functions.https.HttpsError('failed-precondition', 'AI API Key is not configured on the server.');
+      console.error('GEMINI_API_KEY is not configured');
+      throw new functions.https.HttpsError(
+        'failed-precondition', 
+        'AI API Key is not configured on the server. Please contact the administrator.'
+      );
+    }
+
+    // 4. Validate prompt
+    if (!prompt || prompt.trim().length === 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'Prompt cannot be empty');
+    }
+
+    // 5. Validate prompt length (prevent abuse)
+    const MAX_PROMPT_LENGTH = 10000; // 10k characters max
+    if (prompt.length > MAX_PROMPT_LENGTH) {
+      throw new functions.https.HttpsError(
+        'invalid-argument', 
+        `Prompt is too long. Maximum ${MAX_PROMPT_LENGTH} characters allowed.`
+      );
     }
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      // 2. Build the System Prompt (Inspired by MindTrace's llm_evaluator logic)
+      // 6. Build the System Prompt (Inspired by MindTrace's llm_evaluator logic)
       let systemPrompt = "";
       switch (task) {
         case 'summarize':
@@ -156,15 +232,53 @@ export const processAIAction = functions
 
       const finalPrompt = `${systemPrompt}\n\n"${prompt}"\n\nReturn ONLY the revised text.`;
 
-      // 3. Generate Content
-      const result = await model.generateContent(finalPrompt);
+      // 7. Generate Content with timeout
+      const result = await Promise.race([
+        model.generateContent(finalPrompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 30000) // 30 second timeout
+        )
+      ]) as any;
+
       const response = await result.response;
       const text = response.text();
 
+      // 8. Log successful AI request (for monitoring)
+      await db.collection('aiUsageLogs').add({
+        userId,
+        task,
+        promptLength: prompt.length,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'SUCCESS',
+      });
+
       return { text };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini API Error:", error);
-      throw new functions.https.HttpsError('internal', 'AI Service failed to process the request.');
+      
+      // Log failed AI request
+      await db.collection('aiUsageLogs').add({
+        userId,
+        task,
+        promptLength: prompt.length,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'FAILED',
+        error: error.message || 'Unknown error',
+      });
+
+      // Handle specific Gemini API errors
+      if (error.message?.includes('timeout')) {
+        throw new functions.https.HttpsError('deadline-exceeded', 'AI request timed out. Please try again.');
+      }
+      
+      if (error.message?.includes('API key') || error.message?.includes('quota')) {
+        throw new functions.https.HttpsError(
+          'failed-precondition', 
+          'AI service is temporarily unavailable. Please try again later.'
+        );
+      }
+
+      throw new functions.https.HttpsError('internal', 'AI Service failed to process the request. Please try again.');
     }
   });
 

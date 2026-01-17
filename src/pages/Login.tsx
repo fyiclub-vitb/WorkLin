@@ -3,182 +3,333 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, LogIn, User, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, LogIn, Lock, Mail, ArrowRight, KeyRound } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { loginWithEmail, loginWithGoogle, signUpWithEmail, resetPassword } from '../lib/firebase/auth';
+import { getCurrentUser } from '../lib/firebase/auth';
+import { LogoIcon } from '../components/Logo';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Demo credentials
-  const DEMO_EMAIL = 'demo@worklin.com';
-  const DEMO_PASSWORD = 'demo123';
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate login delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Check demo credentials
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      // Store demo session
-      localStorage.setItem('worklin-demo-user', JSON.stringify({
-        email: DEMO_EMAIL,
-        name: 'Demo User',
-        isDemo: true,
-      }));
-      
-      toast({
-        title: 'Welcome to WorkLin!',
-        description: 'You are logged in as a demo user.',
-      });
-      
-      navigate('/app');
-    } else {
-      toast({
-        title: 'Invalid credentials',
-        description: 'Please use the demo credentials: demo@worklin.com / demo123',
-        variant: 'destructive',
-      });
+    try {
+      if (isSignUp) {
+        const { user, error } = await signUpWithEmail(email, password, displayName);
+        if (error) {
+          toast({
+            title: 'Sign up failed',
+            description: error,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Account created!',
+            description: 'Welcome to WorkLin!',
+          });
+          navigate('/app');
+        }
+      } else {
+        const { user, error } = await loginWithEmail(email, password);
+        if (error) {
+          toast({
+            title: 'Login failed',
+            description: error,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Welcome back!',
+            description: 'You have been logged in successfully.',
+          });
+          navigate('/app');
+        }
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  const handleDemoLogin = () => {
-    setEmail(DEMO_EMAIL);
-    setPassword(DEMO_PASSWORD);
-    // Auto-submit after setting values
-    setTimeout(() => {
-      const form = document.querySelector('form');
-      if (form) {
-        form.requestSubmit();
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    try {
+      const { user, error } = await loginWithGoogle();
+      if (error) {
+        toast({
+          title: 'Google sign in failed',
+          description: error,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Welcome!',
+          description: 'You have been logged in with Google.',
+        });
+        navigate('/app');
       }
-    }, 100);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: 'Email required',
+        description: 'Please enter your email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await resetPassword(email);
+      if (error) {
+        toast({
+          title: 'Password reset failed',
+          description: error,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Password reset email sent!',
+          description: 'Check your inbox for instructions to reset your password.',
+        });
+        setShowForgotPassword(false);
+        setEmail(''); // Clear email for security
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Back to Landing */}
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-all hover:scale-105"
         >
           <ArrowLeft size={18} />
-          <span>Back to home</span>
+          <span className="font-medium">Back to home</span>
         </Link>
 
-        <Card className="shadow-xl border-0">
-          <CardHeader className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold mb-2">
-              W
+        <Card className="shadow-2xl border-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+          <CardHeader className="text-center space-y-3 pb-8">
+            <div className="mx-auto mb-3">
+              <LogoIcon size={80} />
             </div>
-            <CardTitle className="text-3xl font-bold">Welcome to WorkLin</CardTitle>
-            <CardDescription className="text-base">
-              Sign in to your workspace or try the demo
+            <CardTitle className="text-4xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+              Welcome to WorkLin
+            </CardTitle>
+            <CardDescription className="text-lg text-gray-600 dark:text-gray-400">
+              {isSignUp ? 'Create your account' : 'Sign in to your workspace'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <Mail size={16} />
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="demo@worklin.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-11"
-                />
-              </div>
+            {showForgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-4">
+                  <div className="text-center mb-4">
+                    <KeyRound className="w-12 h-12 mx-auto text-blue-600 dark:text-blue-400 mb-2" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Reset Password
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      Enter your email address and we'll send you a link to reset your password.
+                    </p>
+                  </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <Lock size={16} />
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-11"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label htmlFor="resetEmail" className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <Mail size={16} />
+                      Email
+                    </label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="h-11"
+                    />
+                  </div>
 
-              {/* Demo Credentials Info */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                  🎯 Demo Credentials
-                </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
-                  Use these credentials to try WorkLin:
-                </p>
-                <div className="space-y-1 text-xs font-mono text-blue-800 dark:text-blue-200">
-                  <p><strong>Email:</strong> demo@worklin.com</p>
-                  <p><strong>Password:</strong> demo123</p>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {loading ? (
+                      'Sending...'
+                    ) : (
+                      <>
+                        <Mail size={18} className="mr-2" />
+                        Send Reset Link
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setEmail('');
+                    }}
+                    variant="outline"
+                    className="w-full h-11"
+                    disabled={loading}
+                  >
+                    <ArrowLeft size={18} className="mr-2" />
+                    Back to Sign In
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleDemoLogin}
-                  variant="outline"
-                  className="w-full mt-3 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                >
-                  Use Demo Credentials
-                </Button>
-              </div>
+              </form>
+            ) : (
+              <form onSubmit={handleEmailAuth} className="space-y-4">
+                {isSignUp && (
+                  <div className="space-y-2">
+                    <label htmlFor="displayName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Display Name
+                    </label>
+                    <Input
+                      id="displayName"
+                      type="text"
+                      placeholder="Your name"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      required={isSignUp}
+                      className="h-11"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Mail size={16} />
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <Lock size={16} />
+                      Password
+                    </label>
+                    {!isSignUp && (
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11"
+                    minLength={6}
+                  />
+                </div>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-[1.02] transition-all"
               >
                 {loading ? (
-                  'Signing in...'
+                  'Please wait...'
                 ) : (
                   <>
                     <LogIn size={18} className="mr-2" />
-                    Sign In
+                    {isSignUp ? 'Sign Up' : 'Sign In'}
                   </>
                 )}
               </Button>
 
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-200 dark:border-gray-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={loading}
+                variant="outline"
+                className="w-full h-12 border-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 hover:scale-[1.02] transition-all"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                Continue with Google
+              </Button>
+
               <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                 <p>
-                  Don't have an account?{' '}
+                  {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
                   <button
                     type="button"
-                    onClick={handleDemoLogin}
+                    onClick={() => setIsSignUp(!isSignUp)}
                     className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer"
                   >
-                    Demo mode available
+                    {isSignUp ? 'Sign in' : 'Sign up'}
                   </button>
                 </p>
               </div>
             </form>
-
-            {/* Future Firebase Auth */}
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                🔒 Full authentication with Firebase coming soon
-                <br />
-                <span className="text-blue-600 dark:text-blue-400">
-                  See <Link to="/" className="underline">GITHUB_ISSUES.md</Link> for contribution opportunities
-                </span>
-              </p>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

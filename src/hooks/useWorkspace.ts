@@ -127,8 +127,34 @@ export const useWorkspace = () => {
   };
 
   const deletePage = (pageId: string) => {
+    // Mark as archived instead of deleting
     setWorkspace((prev) => ({
-      ...prev, // Spread prev
+      ...prev,
+      pages: prev.pages.map((p) =>
+        p.id === pageId ? { ...p, isArchived: true, updatedAt: new Date() } : p
+      ),
+      updatedAt: new Date()
+    }));
+    // If current page is deleted, clear selection to show home/empty state
+    if (currentPageId === pageId) {
+      const remaining = workspace.pages.filter((p) => p.id !== pageId && !p.isArchived);
+      setCurrentPageId(remaining.length > 0 ? remaining[0].id : null);
+    }
+  };
+
+  const restorePage = (pageId: string) => {
+    setWorkspace((prev) => ({
+      ...prev,
+      pages: prev.pages.map((p) =>
+        p.id === pageId ? { ...p, isArchived: false, updatedAt: new Date() } : p
+      ),
+      updatedAt: new Date()
+    }));
+  };
+
+  const permanentlyDeletePage = (pageId: string) => {
+    setWorkspace((prev) => ({
+      ...prev,
       pages: prev.pages.filter((p) => p.id !== pageId),
       updatedAt: new Date()
     }));
@@ -249,12 +275,32 @@ export const useWorkspace = () => {
   };
 
   const currentPage = workspace.pages.find((p) => p.id === currentPageId);
+  const updatePageProperties = (pageId: string, properties: any) => {
+  setWorkspace((prev) => ({
+    ...prev,
+    pages: prev.pages.map((p) =>
+      p.id === pageId 
+        ? { ...p, properties, updatedAt: new Date() } 
+        : p
+    ),
+    updatedAt: new Date()
+  }));
+};
+
+
+  // Filter out archived pages for main view
+  const activePages = workspace.pages.filter((p) => !p.isArchived);
+  const archivedPages = workspace.pages.filter((p) => p.isArchived);
 
   return {
-    workspace,
+    workspace: { ...workspace, pages: activePages },
+    archivedPages,
     currentPage,
     currentPageId,
     setCurrentPageId,
+    updatePageProperties,
+    restorePage,
+    permanentlyDeletePage,
     addPage,
     deletePage,
     updatePageTitle,

@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import { Page, Block, Workspace } from '../../types/workspace';
+import { addToQueue } from '../offline/queue';
 
 // Collections
 const WORKSPACES_COLLECTION = 'workspaces';
@@ -160,10 +161,40 @@ export const updatePage = async (pageId: string, updates: Partial<Page>) => {
   }
 };
 
+// Move page to trash (archive)
 export const deletePage = async (pageId: string) => {
   try {
     const pageRef = doc(db, PAGES_COLLECTION, pageId);
-    await deleteDoc(pageRef);
+    await updateDoc(pageRef, {
+      isArchived: true,
+      archivedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Restore page from trash
+export const restorePage = async (pageId: string) => {
+  try {
+    const pageRef = doc(db, PAGES_COLLECTION, pageId);
+    await updateDoc(pageRef, {
+      isArchived: false,
+      archivedAt: null,
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Permanently delete page
+export const permanentlyDeletePage = async (pageId: string) => {
+  try {
+    await deleteDoc(doc(db, PAGES_COLLECTION, pageId));
     return { error: null };
   } catch (error: any) {
     return { error: error.message };
@@ -181,6 +212,11 @@ export const subscribeToPage = (pageId: string, callback: (page: any) => void) =
 
 // Block operations
 export const createBlock = async (pageId: string, blockData: Partial<Block>) => {
+  if (!navigator.onLine) {
+    const tempId = 'temp-block-' + Date.now();
+    await addToQueue({ type: 'createBlock', payload: { pageId, blockData: { ...blockData, id: tempId } } });
+    return { block: { ...blockData, id: tempId, pageId }, error: null, offline: true };
+  }
   try {
     const blockRef = doc(collection(db, BLOCKS_COLLECTION));
     const block = {
@@ -216,6 +252,10 @@ export const getBlocksByPage = async (pageId: string) => {
 };
 
 export const updateBlock = async (blockId: string, updates: Partial<Block>) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'updateBlock', payload: { blockId, updates } });
+    return { error: null, offline: true };
+  }
   try {
     const blockRef = doc(db, BLOCKS_COLLECTION, blockId);
     await updateDoc(blockRef, {
@@ -229,6 +269,10 @@ export const updateBlock = async (blockId: string, updates: Partial<Block>) => {
 };
 
 export const deleteBlock = async (blockId: string) => {
+  if (!navigator.onLine) {
+    await addToQueue({ type: 'deleteBlock', payload: { blockId } });
+    return { error: null, offline: true };
+  }
   try {
     const blockRef = doc(db, BLOCKS_COLLECTION, blockId);
     await deleteDoc(blockRef);

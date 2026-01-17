@@ -1,0 +1,17 @@
+{
+  "name": "worklin-yjs-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Yjs WebSocket server for WorkLin collaboration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

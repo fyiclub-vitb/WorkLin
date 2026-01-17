@@ -31,11 +31,18 @@ export const enable2FA = async (): Promise<{ secret: string; otpauthUrl: string 
     throw new Error('User must be authenticated to enable 2FA');
   }
 
-  const result = await generate2FASecretCallable();
-  return {
-    secret: result.data.secret,
-    otpauthUrl: result.data.otpauthUrl,
-  };
+  try {
+    const result = await generate2FASecretCallable();
+    return {
+      secret: result.data.secret,
+      otpauthUrl: result.data.otpauthUrl,
+    };
+  } catch (error: any) {
+    if (error.code === 'functions/not-found' || error.message?.includes('not found')) {
+      throw new Error('2FA feature requires Firebase Functions to be deployed. This is an optional security feature.');
+    }
+    throw error;
+  }
 };
 
 /**
@@ -50,8 +57,15 @@ export const verify2FA = async (code: string, secret: string): Promise<boolean> 
     throw new Error('User must be authenticated to verify 2FA');
   }
 
-  const result = await verify2FATokenCallable({ code, secret });
-  return result.data.valid;
+  try {
+    const result = await verify2FATokenCallable({ code, secret });
+    return result.data.valid;
+  } catch (error: any) {
+    if (error.code === 'functions/not-found' || error.message?.includes('not found')) {
+      throw new Error('2FA feature requires Firebase Functions to be deployed. This is an optional security feature.');
+    }
+    throw error;
+  }
 };
 
 /**
@@ -66,8 +80,15 @@ export const disable2FA = async (code: string): Promise<boolean> => {
     throw new Error('User must be authenticated to disable 2FA');
   }
 
-  const result = await disable2FACallable({ code });
-  return result.data.success;
+  try {
+    const result = await disable2FACallable({ code });
+    return result.data.success;
+  } catch (error: any) {
+    if (error.code === 'functions/not-found' || error.message?.includes('not found')) {
+      throw new Error('2FA feature requires Firebase Functions to be deployed. This is an optional security feature.');
+    }
+    throw error;
+  }
 };
 
 /**
