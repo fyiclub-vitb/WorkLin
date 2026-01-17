@@ -9,6 +9,8 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 
+// This component provides advanced search with filters
+// It searches through local storage instead of the cloud
 export const AdvancedSearch = () => {
     const { workspace } = useWorkspace();
     const navigate = useNavigate();
@@ -20,14 +22,14 @@ export const AdvancedSearch = () => {
     const [results, setResults] = useState<SearchResult['pages']>([]);
     const [error, setError] = useState<string | null>(null);
 
+    // Filter options for narrowing down search
     const [filters, setFilters] = useState<Partial<SearchFiltersType>>({
         dateRange: { start: null, end: null },
         tags: []
     });
 
+    // Search through local storage (not cloud)
     const handleSearch = async () => {
-        // As per user request: "just search the local storage and not cloud storage"
-        // We also read directly from localStorage to ensure we see pages created by Sidebar 
         setLoading(true);
         setError(null);
 
@@ -38,41 +40,40 @@ export const AdvancedSearch = () => {
             if (savedData) {
                 try {
                     const parsed = JSON.parse(savedData);
-                    // Ensure we access the pages array from the workspace object
+                    // Get the pages array from workspace object
                     localPages = Array.isArray(parsed.pages) ? parsed.pages : [];
                 } catch (e) {
                     console.error("Failed to parse local storage for search", e);
                 }
             } else {
-                // Fallback to component state if storage is empty
+                // If storage is empty, use workspace state as fallback
                 localPages = workspace?.pages || [];
             }
 
-            // --- Client Side Filtering ---
-            // Text Search
+            // Filter by text search
             if (query) {
                 const lowerQ = query.toLowerCase();
                 localPages = localPages.filter(p => p.title?.toLowerCase().includes(lowerQ));
             }
 
-            // Type Filter
+            // Filter by page type (document, canvas, kanban, etc.)
             if (filters.type) {
                 localPages = localPages.filter(p => p.type === filters.type);
             }
 
-            // Tags Filter
+            // Filter by tags
             if (filters.tags && filters.tags.length > 0) {
                 localPages = localPages.filter(p =>
                     p.tags && filters.tags!.every((tag: string) => p.tags.includes(tag))
                 );
             }
 
-            // Date Filter
+            // Filter by date range
             if (filters.dateRange?.start || filters.dateRange?.end) {
                 const start = filters.dateRange.start ? filters.dateRange.start.getTime() : 0;
                 const end = filters.dateRange.end ? filters.dateRange.end.getTime() : Infinity;
                 localPages = localPages.filter(p => {
-                    // Handle string dates from JSON or DB dates
+                    // Handle both Date objects and date strings
                     const dateVal = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
                     return dateVal >= start && dateVal <= end;
                 });
@@ -87,27 +88,15 @@ export const AdvancedSearch = () => {
         }
     };
 
+    // Save this search query for later use
     const handleSaveSearch = async () => {
         if (!workspace) return;
-        // Basic prompt for name - could be a dialog in a polished version
+        
         const name = prompt("Enter a name for this search query:");
         if (!name) return;
 
-        // Assuming current user is workspace owner for simplicity or getting user ID from auth context
-        // Since I don't have direct access to auth context hook here easily without checking more files, 
-        // I will use workspace.ownerId or a placebo. 
-        // Ideally: const { user } = useAuth();
-
-        // Let's rely on the user being logged in if they are seeing this.
-        // For now, I'll allow saving without explicit user ID check if the service handles it 
-        // or just pass 'current-user' as placebo if I can't find it.
-        // Wait, I can see useWorkspace hook file usage in metadata.
-        // It likely provides workspace. 
-        // I'll use workspace.ownerId as a fallback if I can't find a better ID.
-        // Actually, let's just make it required or grab from `auth` object in firebase/config if possible?
-        // I'll leave 'userId' as a todo or use workspace.members[0]
-
-        const userId = workspace.members[0]; // Fallback
+        // Use first workspace member as user ID (simplified)
+        const userId = workspace.members[0];
 
         await saveSearchQuery(userId, name, {
             query: query || undefined,
@@ -116,16 +105,12 @@ export const AdvancedSearch = () => {
         alert("Search saved!");
     };
 
-    // Removed handleSeedData and auto-seed logic as per user request.
-
-    // Debounce search or just manual? Manual is safer for Firestore reads.
-    // I'll stick to manual "Search" button or Enter key.
-
     return (
         <div className="w-full max-w-2xl mx-auto p-4 space-y-4">
             <div className="flex flex-col gap-4">
                 <h2 className="text-2xl font-bold tracking-tight">Advanced Search</h2>
 
+                {/* Search input and buttons */}
                 <div className="flex gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -142,6 +127,7 @@ export const AdvancedSearch = () => {
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Search
                     </Button>
+                    {/* Toggle filters button */}
                     <Button
                         variant="outline"
                         size="icon"
@@ -152,6 +138,7 @@ export const AdvancedSearch = () => {
                     </Button>
                 </div>
 
+                {/* Filter panel - only shown when toggled */}
                 {showFilters && (
                     <SearchFilters
                         filters={filters}
@@ -160,21 +147,25 @@ export const AdvancedSearch = () => {
                     />
                 )}
 
+                {/* Save query button */}
                 <div className="flex justify-start">
                     <Button variant="ghost" size="sm" onClick={handleSaveSearch} disabled={!query && !filters.tags?.length && !filters.type && !filters.authorId}>
                         <Save className="mr-2 h-4 w-4" /> Save Query
                     </Button>
                 </div>
 
+                {/* Search results */}
                 <div className="space-y-2 mt-4">
                     {error && <div className="text-red-500 text-sm">{error}</div>}
 
+                    {/* Empty state */}
                     {results.length === 0 && !loading && !error && (
                         <div className="text-center text-muted-foreground py-8">
                             No results found. Try adjusting your filters.
                         </div>
                     )}
 
+                    {/* Result cards */}
                     {results.map((page) => (
                         <Card
                             key={page.id}

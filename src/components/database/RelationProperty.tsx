@@ -19,6 +19,7 @@ interface RelationPropertyProps {
   onUpdate: (updatedPage: Page) => void;
 }
 
+// This lets you link pages together (like linking a task to a project)
 export const RelationProperty: React.FC<RelationPropertyProps> = ({
   page,
   property,
@@ -29,18 +30,18 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get currently related pages
+  // Get list of pages that are already linked
   const relatedPages = useMemo(
     () => getRelatedPages(page, propertyName, allPages),
     [page, propertyName, allPages]
   );
 
-  // Filter available pages for linking
+  // Get list of pages we can link to (excluding already linked ones)
   const availablePages = useMemo(() => {
     const relatedIds = new Set(relatedPages.map((p) => p.id));
     let filtered = allPages.filter((p) => p.id !== page.id && !relatedIds.has(p.id));
 
-    // Filter by page type if specified
+    // Filter by page type if the relation has a target type specified
     if (property.targetPageType) {
       filtered = filtered.filter((p) => (p as any).type === property.targetPageType);
     }
@@ -54,12 +55,14 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
     return filtered;
   }, [allPages, page.id, relatedPages, property.targetPageType, searchQuery]);
 
+  // Link this page to another page
   const handleAddRelation = (targetPageId: string) => {
     const updatedPage = addRelation(page, propertyName, targetPageId, allPages);
     onUpdate(updatedPage);
     setSearchQuery('');
   };
 
+  // Unlink a page
   const handleRemoveRelation = (targetPageId: string) => {
     const updatedPage = removeRelation(page, propertyName, targetPageId);
     onUpdate(updatedPage);
@@ -72,7 +75,7 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
         {property.name}
       </label>
 
-      {/* Related Pages List */}
+      {/* Show all linked pages as chips */}
       <div className="flex flex-wrap gap-2">
         {relatedPages.map((relatedPage) => (
           <div
@@ -81,6 +84,7 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
           >
             <span className="text-gray-700 dark:text-gray-300">{relatedPage.icon}</span>
             <span className="text-gray-900 dark:text-gray-100">{relatedPage.title}</span>
+            {/* X button to remove the link - shows on hover */}
             <button
               onClick={() => handleRemoveRelation(relatedPage.id)}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 dark:hover:text-red-400"
@@ -91,7 +95,7 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
           </div>
         ))}
 
-        {/* Add Relation Button */}
+        {/* Button to add more links */}
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -107,7 +111,7 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
             className="w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50"
             align="start"
           >
-            {/* Search Input */}
+            {/* Search box to find pages */}
             <div className="relative mb-2">
               <Search
                 size={16}
@@ -123,7 +127,7 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
               />
             </div>
 
-            {/* Available Pages List */}
+            {/* List of pages you can link to */}
             <div className="max-h-64 overflow-y-auto space-y-1">
               {availablePages.length === 0 ? (
                 <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
@@ -151,7 +155,7 @@ export const RelationProperty: React.FC<RelationPropertyProps> = ({
         </Popover>
       </div>
 
-      {/* Relation Info */}
+      {/* Info note about bidirectional relations */}
       {property.bidirectional && (
         <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
           <LinkIcon size={12} />

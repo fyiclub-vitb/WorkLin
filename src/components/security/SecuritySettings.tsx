@@ -30,6 +30,7 @@ interface UserSecurity {
   suspiciousFlags?: Array<{ type: string; timestamp: Timestamp; details?: any }>;
 }
 
+// This component manages security settings like 2FA and shows security alerts
 export const SecuritySettings: React.FC = () => {
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,11 +42,13 @@ export const SecuritySettings: React.FC = () => {
   const [userSecurity, setUserSecurity] = useState<UserSecurity | null>(null);
   const { toast } = useToast();
 
+  // Load security status and alerts when component mounts
   useEffect(() => {
     loadSecurityStatus();
     loadSecurityAlerts();
   }, []);
 
+  // Check if 2FA is enabled and load user security info
   const loadSecurityStatus = async () => {
     try {
       const enabled = await is2FAEnabled();
@@ -59,6 +62,7 @@ export const SecuritySettings: React.FC = () => {
     }
   };
 
+  // Load recent security alerts for this user
   const loadSecurityAlerts = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -68,7 +72,7 @@ export const SecuritySettings: React.FC = () => {
         collection(db, 'securityAlerts'),
         where('userId', '==', user.uid),
         orderBy('timestamp', 'desc'),
-        limit(10)
+        limit(10) // Only show last 10 alerts
       );
       const snapshot = await getDocs(alertsQuery);
       const alerts = snapshot.docs.map((doc) => ({
@@ -81,13 +85,15 @@ export const SecuritySettings: React.FC = () => {
     }
   };
 
+  // Start the 2FA setup process
   const handleEnable2FA = async () => {
     setLoading(true);
     try {
+      // Generate a secret and QR code for the authenticator app
       const result = await enable2FA();
       setSecret(result.secret);
       
-      // Generate QR code
+      // Convert the auth URL to a QR code image
       const qrDataUrl = await QRCode.toDataURL(result.otpauthUrl);
       setQrCodeUrl(qrDataUrl);
       
@@ -106,6 +112,7 @@ export const SecuritySettings: React.FC = () => {
     }
   };
 
+  // Verify the code from the authenticator app to complete 2FA setup
   const handleVerify2FA = async () => {
     if (!secret || !verificationCode) {
       toast({
@@ -120,6 +127,7 @@ export const SecuritySettings: React.FC = () => {
     try {
       const valid = await verify2FA(verificationCode, secret);
       if (valid) {
+        // Success! 2FA is now enabled
         setTwoFAEnabled(true);
         setQrCodeUrl(null);
         setSecret(null);
@@ -148,6 +156,7 @@ export const SecuritySettings: React.FC = () => {
     }
   };
 
+  // Disable 2FA (requires entering current 2FA code for security)
   const handleDisable2FA = async () => {
     if (!disableCode) {
       toast({
@@ -188,6 +197,7 @@ export const SecuritySettings: React.FC = () => {
     }
   };
 
+  // Color code alerts by severity
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'HIGH':
@@ -201,6 +211,7 @@ export const SecuritySettings: React.FC = () => {
     }
   };
 
+  // Format timestamp to readable date
   const formatDate = (timestamp: Timestamp | null | undefined) => {
     if (!timestamp) return 'Never';
     return new Date(timestamp.toMillis()).toLocaleString();
@@ -210,7 +221,7 @@ export const SecuritySettings: React.FC = () => {
     <div className="container mx-auto p-6 space-y-6 max-w-4xl">
       <h1 className="text-3xl font-bold">Security Settings</h1>
 
-      {/* Two-Factor Authentication Section */}
+      {/* 2FA Setup Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -246,6 +257,7 @@ export const SecuritySettings: React.FC = () => {
             )}
           </div>
 
+          {/* QR Code Setup Flow */}
           {qrCodeUrl && (
             <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
               <p className="text-sm font-medium">Scan this QR code with your authenticator app:</p>
@@ -289,6 +301,7 @@ export const SecuritySettings: React.FC = () => {
             </div>
           )}
 
+          {/* Disable 2FA Section */}
           {twoFAEnabled && (
             <div className="space-y-2 p-4 border rounded-lg border-destructive/50">
               <p className="text-sm font-medium text-destructive">Disable 2FA</p>
@@ -317,7 +330,7 @@ export const SecuritySettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Recent Security Alerts */}
+      {/* Security Alerts Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -338,6 +351,7 @@ export const SecuritySettings: React.FC = () => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
+                      {/* Severity badge */}
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium ${getSeverityColor(
                           alert.severity
@@ -361,7 +375,7 @@ export const SecuritySettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Login & Security Info */}
+      {/* Login & Security Info Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -385,6 +399,7 @@ export const SecuritySettings: React.FC = () => {
               {userSecurity?.lastLoginIp || 'Unknown'}
             </p>
           </div>
+          {/* Show trusted devices if any */}
           {userSecurity?.trustedDevices && userSecurity.trustedDevices.length > 0 && (
             <div>
               <p className="text-sm font-medium mb-2">Trusted Devices</p>
@@ -402,4 +417,3 @@ export const SecuritySettings: React.FC = () => {
     </div>
   );
 };
-

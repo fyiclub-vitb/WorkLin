@@ -23,6 +23,8 @@ interface AuditLogEntry {
   metadata?: Record<string, any>;
 }
 
+// This component shows a log of all security-related events
+// Like login attempts, password changes, data exports, etc.
 export const AuditLog: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,10 +37,12 @@ export const AuditLog: React.FC = () => {
   const logsPerPage = 50;
   const { toast } = useToast();
 
+  // Load logs whenever filters change
   useEffect(() => {
     loadLogs();
   }, [filterAction, filterStatus, dateFrom, dateTo, currentPage]);
 
+  // Fetch audit logs from Firestore
   const loadLogs = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -52,15 +56,14 @@ export const AuditLog: React.FC = () => {
         limit(logsPerPage * currentPage)
       );
 
-      // Note: Firestore doesn't support multiple where clauses with different fields easily
-      // For production, consider using composite indexes or filtering client-side
       const snapshot = await getDocs(q);
       let filteredLogs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as AuditLogEntry[];
 
-      // Client-side filtering
+      // Apply filters on the client side
+      // (Firestore doesn't support complex queries well)
       if (filterAction !== 'all') {
         filteredLogs = filteredLogs.filter((log) => log.action === filterAction);
       }
@@ -95,6 +98,7 @@ export const AuditLog: React.FC = () => {
     }
   };
 
+  // Export logs to CSV file
   const handleExport = async () => {
     try {
       // Create CSV content
@@ -113,7 +117,7 @@ export const AuditLog: React.FC = () => {
         ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
       ].join('\n');
 
-      // Create blob and download
+      // Trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -124,7 +128,7 @@ export const AuditLog: React.FC = () => {
       link.click();
       document.body.removeChild(link);
 
-      // Log the export action
+      // Log this export action to the audit log
       await logExport('CSV', logs.length);
 
       toast({
@@ -140,6 +144,7 @@ export const AuditLog: React.FC = () => {
     }
   };
 
+  // Color code based on status (success, failed, blocked)
   const getStatusColor = (status: AuditStatus) => {
     switch (status) {
       case 'SUCCESS':
@@ -154,10 +159,12 @@ export const AuditLog: React.FC = () => {
     }
   };
 
+  // Format Firestore timestamp to readable string
   const formatDate = (timestamp: Timestamp) => {
     return new Date(timestamp.toMillis()).toLocaleString();
   };
 
+  // All possible audit actions
   const actionOptions: AuditAction[] = [
     'LOGIN',
     'LOGOUT',
@@ -184,7 +191,7 @@ export const AuditLog: React.FC = () => {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Filter controls */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -194,6 +201,7 @@ export const AuditLog: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Action filter */}
             <div>
               <label className="text-sm font-medium mb-2 block">Action</label>
               <select
@@ -212,6 +220,8 @@ export const AuditLog: React.FC = () => {
                 ))}
               </select>
             </div>
+            
+            {/* Status filter */}
             <div>
               <label className="text-sm font-medium mb-2 block">Status</label>
               <select
@@ -229,6 +239,8 @@ export const AuditLog: React.FC = () => {
                 <option value="BLOCKED">Blocked</option>
               </select>
             </div>
+            
+            {/* Date range filters */}
             <div>
               <label className="text-sm font-medium mb-2 block">From Date</label>
               <Input
@@ -255,7 +267,7 @@ export const AuditLog: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Audit Log Table */}
+      {/* Audit log table */}
       <Card>
         <CardHeader>
           <CardTitle>Audit Log Entries</CardTitle>
@@ -320,7 +332,7 @@ export const AuditLog: React.FC = () => {
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Pagination controls */}
           {logs.length > 0 && (
             <div className="flex items-center justify-between mt-4">
               <Button
@@ -345,4 +357,3 @@ export const AuditLog: React.FC = () => {
     </div>
   );
 };
-

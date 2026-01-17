@@ -9,12 +9,14 @@ interface FormulaPropertyProps {
   property: FormulaPropertyType;
 }
 
+// This component shows a calculated field based on a formula
+// Like Excel formulas but for our database pages
 export const FormulaProperty: React.FC<FormulaPropertyProps> = ({ page, property }) => {
-  // Build formula context
+  // Build the context object with all the data the formula can access
   const context: FormulaContext = useMemo(
     () => ({
-      properties: (page as any).propertyValues || {},
-      now: new Date(),
+      properties: (page as any).propertyValues || {}, // All the page's properties
+      now: new Date(), // Current date/time
       page: {
         title: page.title,
         createdAt: page.createdAt,
@@ -24,13 +26,13 @@ export const FormulaProperty: React.FC<FormulaPropertyProps> = ({ page, property
     [page]
   );
 
-  // Evaluate the formula
+  // Run the formula and get the result
   const result = useMemo(() => evaluateFormula(property, context), [property, context]);
 
-  // Format the display value
+  // Format the value nicely based on what type it is
   const formatValue = (value: any, type: string): string => {
     if (value === null || value === undefined) {
-      return '—';
+      return '—'; // Show a dash for empty values
     }
 
     switch (type) {
@@ -55,7 +57,7 @@ export const FormulaProperty: React.FC<FormulaPropertyProps> = ({ page, property
         {property.name}
       </label>
 
-      {/* Formula Result Display */}
+      {/* Show the formula result or error */}
       <div
         className={`px-4 py-3 rounded-md border ${
           result.type === 'error'
@@ -64,6 +66,7 @@ export const FormulaProperty: React.FC<FormulaPropertyProps> = ({ page, property
         }`}
       >
         {result.type === 'error' ? (
+          // Show error message if formula failed
           <div className="flex items-start gap-2">
             <AlertCircle size={16} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <div>
@@ -72,6 +75,7 @@ export const FormulaProperty: React.FC<FormulaPropertyProps> = ({ page, property
             </div>
           </div>
         ) : (
+          // Show the calculated result
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle size={16} className="text-green-600 dark:text-green-400" />
@@ -86,7 +90,7 @@ export const FormulaProperty: React.FC<FormulaPropertyProps> = ({ page, property
         )}
       </div>
 
-      {/* Formula Info */}
+      {/* Show info about the formula */}
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
         <p>
           <strong>Return type:</strong> {property.returnType}

@@ -19,6 +19,7 @@ interface ExportMenuProps {
   disabled?: boolean;
 }
 
+// This dropdown menu lets users export their page in different formats
 export const ExportMenu: React.FC<ExportMenuProps> = ({
   page,
   disabled = false,
@@ -26,6 +27,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Export as Markdown (.md file)
   const handleExportMarkdown = () => {
     try {
       exportMarkdown(page);
@@ -45,6 +47,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
     }
   };
 
+  // Export as HTML (.html file)
   const handleExportHtml = () => {
     try {
       exportHtml(page);
@@ -64,14 +67,15 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
     }
   };
 
+  // Export as PDF (.pdf file)
   const handleExportPdf = async () => {
     setIsLoading(true);
     try {
-      // Try html2pdf first
+      // Try the main PDF library first
       try {
         await exportPdf(page);
       } catch {
-        // Fallback to jsPDF + html2canvas if html2pdf is not available
+        // If that fails, try the backup method
         await exportPdfAlternative(page);
       }
 
@@ -119,6 +123,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
 
         <DropdownMenuSeparator className="my-1" />
 
+        {/* Markdown export option */}
         <DropdownMenuItem
           onClick={handleExportMarkdown}
           disabled={isLoading}
@@ -131,6 +136,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
           </span>
         </DropdownMenuItem>
 
+        {/* HTML export option */}
         <DropdownMenuItem
           onClick={handleExportHtml}
           disabled={isLoading}
@@ -143,6 +149,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
           </span>
         </DropdownMenuItem>
 
+        {/* PDF export option */}
         <DropdownMenuItem
           onClick={handleExportPdf}
           disabled={isLoading}
@@ -157,6 +164,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
 
         <DropdownMenuSeparator className="my-1" />
 
+        {/* Info about what gets exported */}
         <div className="px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
           <p className="font-medium mb-1">Includes:</p>
           <ul className="space-y-0.5">

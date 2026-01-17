@@ -10,11 +10,14 @@ interface Props {
     onClear: () => void;
 }
 
+// This component shows all the filter options for search
 export const SearchFilters = ({ filters, onChange, onClear }: Props) => {
+    // Update a specific filter field
     const handleChange = (key: keyof SearchFiltersType, value: any) => {
         onChange({ ...filters, [key]: value });
     };
 
+    // Handle date range changes
     const handleDateChange = (type: 'start' | 'end', dateStr: string) => {
         const date = dateStr ? new Date(dateStr) : null;
         const currentRange = filters.dateRange || { start: null, end: null };
@@ -38,7 +41,7 @@ export const SearchFilters = ({ filters, onChange, onClear }: Props) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Author Filter */}
+                {/* Filter by author/user ID */}
                 <div className="space-y-1">
                     <label className="text-xs font-medium flex items-center gap-2">
                         <User className="w-3 h-3" /> Author ID
@@ -51,7 +54,7 @@ export const SearchFilters = ({ filters, onChange, onClear }: Props) => {
                     />
                 </div>
 
-                {/* Type Filter */}
+                {/* Filter by page type */}
                 <div className="space-y-1">
                     <label className="text-xs font-medium flex items-center gap-2">
                         <FileType className="w-3 h-3" /> Page Type
@@ -68,7 +71,7 @@ export const SearchFilters = ({ filters, onChange, onClear }: Props) => {
                     </select>
                 </div>
 
-                {/* Tags Filter */}
+                {/* Filter by tags */}
                 <div className="space-y-1 md:col-span-2">
                     <label className="text-xs font-medium flex items-center gap-2">
                         <Tag className="w-3 h-3" /> Tags (comma separated)
@@ -84,7 +87,7 @@ export const SearchFilters = ({ filters, onChange, onClear }: Props) => {
                     />
                 </div>
 
-                {/* Date Range Filter */}
+                {/* Filter by date range */}
                 <div className="space-y-1 md:col-span-2">
                     <label className="text-xs font-medium flex items-center gap-2">
                         <Calendar className="w-3 h-3" /> Updated Date Range
