@@ -1,8 +1,7 @@
 import { Page, Block } from "../../types/workspace";
 
-/**
- * Escapes HTML special characters
- */
+// Helper function to escape HTML special characters
+// Prevents XSS attacks and ensures proper rendering
 function escapeHtml(text: string): string {
   const map: Record<string, string> = {
     "&": "&amp;",
@@ -14,9 +13,8 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
-/**
- * Formats a block's content to HTML based on its type
- */
+// Function to convert blocks to HTML for the alternative PDF method
+// This is similar to the HTML export but simplified for PDF rendering
 function formatBlockToHtml(block: Block): string {
   const content = block.content || block.text || "";
 
@@ -56,9 +54,7 @@ function formatBlockToHtml(block: Block): string {
   }
 }
 
-/**
- * Formats table data to HTML
- */
+// Convert table data to HTML table
 function formatTableToHtml(tableData: any): string {
   if (!tableData || !tableData.rows || tableData.rows.length === 0) {
     return "<table></table>";
@@ -66,6 +62,7 @@ function formatTableToHtml(tableData: any): string {
 
   let html = "<table>";
 
+  // First row as header
   if (tableData.rows[0]) {
     html += "<thead><tr>";
     tableData.rows[0].forEach((cell: string) => {
@@ -74,6 +71,7 @@ function formatTableToHtml(tableData: any): string {
     html += "</tr></thead>";
   }
 
+  // Remaining rows as body
   html += "<tbody>";
   for (let i = 1; i < tableData.rows.length; i++) {
     html += "<tr>";
@@ -87,24 +85,26 @@ function formatTableToHtml(tableData: any): string {
   return html;
 }
 
-/**
- * Exports page as PDF using text-based rendering (primary method)
- * This creates searchable PDFs with selectable text
- */
+// Main PDF export function using text-based rendering
+// This creates searchable PDFs where you can select and copy text
+// Uses jsPDF library to programmatically build the PDF
 export async function exportPdf(page: Page): Promise<void> {
   try {
-    // @ts-ignore - jsPDF doesn't have complete type declarations
+    // Dynamically import jsPDF library
+    // @ts-ignore - jsPDF doesn't have complete TypeScript definitions
     const { jsPDF } = await import("jspdf");
 
+    // Create new PDF document in portrait orientation with A4 size
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
+    // Track vertical position on the page
     let yPosition = 15;
     const pageMargin = 15;
     const maxWidth = pageWidth - pageMargin * 2;
 
-    // Add title
+    // Add the page title at the top
     pdf.setFontSize(18);
     pdf.setFont("helvetica", "bold");
     const titleLines = pdf.splitTextToSize(page.title, maxWidth);
@@ -114,30 +114,31 @@ export async function exportPdf(page: Page): Promise<void> {
     }
     yPosition += 5;
 
-    // Add metadata
+    // Add metadata (creation and update dates)
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "normal");
-    pdf.setTextColor(150, 150, 150);
+    pdf.setTextColor(150, 150, 150); // Gray color for metadata
     const metadata = `Created: ${new Date(page.createdAt).toLocaleDateString()} | Last updated: ${new Date(page.updatedAt).toLocaleDateString()}`;
     const metaLines = pdf.splitTextToSize(metadata, maxWidth);
     for (const line of metaLines) {
       pdf.text(line, pageMargin, yPosition);
       yPosition += 4;
     }
-    pdf.setTextColor(0, 0, 0);
+    pdf.setTextColor(0, 0, 0); // Reset to black
     yPosition += 5;
 
-    // Add divider
+    // Add horizontal divider line
     pdf.setDrawColor(200, 200, 200);
     pdf.line(pageMargin, yPosition, pageWidth - pageMargin, yPosition);
     yPosition += 8;
 
+    // Reset font for content
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(11);
 
-    // Process blocks
+    // Process each block and add to PDF
     for (const block of page.blocks) {
-      // Check page break
+      // Check if we need a new page (approaching bottom margin)
       if (yPosition > pageHeight - 20) {
         pdf.addPage();
         yPosition = pageMargin;
@@ -147,6 +148,7 @@ export async function exportPdf(page: Page): Promise<void> {
 
       switch (block.type) {
         case "heading1":
+          // Large heading with extra spacing
           pdf.setFontSize(16);
           pdf.setFont("helvetica", "bold");
           yPosition += 4;
@@ -161,6 +163,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "heading2":
+          // Medium heading
           pdf.setFontSize(13);
           pdf.setFont("helvetica", "bold");
           yPosition += 3;
@@ -175,6 +178,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "heading3":
+          // Small heading
           pdf.setFontSize(12);
           pdf.setFont("helvetica", "bold");
           yPosition += 3;
@@ -189,6 +193,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "paragraph":
+          // Regular paragraph text with line wrapping
           const pLines = pdf.splitTextToSize(content, maxWidth);
           for (const line of pLines) {
             if (yPosition > pageHeight - 20) {
@@ -202,6 +207,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "bulleted-list":
+          // Bullet point with indentation
           const ulLines = pdf.splitTextToSize(content, maxWidth - 5);
           for (const line of ulLines) {
             if (yPosition > pageHeight - 20) {
@@ -215,6 +221,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "numbered-list":
+          // Numbered list (using bullets for simplicity)
           const olLines = pdf.splitTextToSize(content, maxWidth - 5);
           for (const line of olLines) {
             if (yPosition > pageHeight - 20) {
@@ -228,6 +235,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "quote":
+          // Quote with gray background and left border
           pdf.setFillColor(240, 240, 240);
           const qLines = pdf.splitTextToSize(content, maxWidth - 8);
           const qHeight = qLines.length * 4 + 4;
@@ -237,7 +245,9 @@ export async function exportPdf(page: Page): Promise<void> {
             yPosition = pageMargin;
           }
 
+          // Draw background rectangle
           pdf.rect(pageMargin, yPosition - 2, maxWidth, qHeight, "F");
+          // Draw left border line
           pdf.setDrawColor(150, 150, 150);
           pdf.setLineWidth(0.5);
           pdf.line(
@@ -257,6 +267,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "code":
+          // Code block with monospace font and gray background
           pdf.setFillColor(245, 245, 245);
           pdf.setFont("courier", "normal");
           const cLines = pdf.splitTextToSize(content, maxWidth - 8);
@@ -278,6 +289,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "checkbox":
+          // Checkbox with [x] or [ ] notation
           const cbLines = pdf.splitTextToSize(content, maxWidth - 5);
           for (const line of cbLines) {
             if (yPosition > pageHeight - 20) {
@@ -292,12 +304,14 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "divider":
+          // Horizontal line separator
           pdf.setDrawColor(200, 200, 200);
           pdf.line(pageMargin, yPosition, pageWidth - pageMargin, yPosition);
           yPosition += 6;
           break;
 
         case "callout":
+          // Callout box with blue background and border
           pdf.setFillColor(230, 240, 255);
           const callLines = pdf.splitTextToSize(content, maxWidth - 8);
           const callHeight = callLines.length * 4 + 4;
@@ -327,6 +341,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "image":
+          // Image placeholder (actual images would need base64 encoding)
           if (yPosition > pageHeight - 20) {
             pdf.addPage();
             yPosition = pageMargin;
@@ -337,6 +352,7 @@ export async function exportPdf(page: Page): Promise<void> {
           break;
 
         case "table":
+          // Simple table rendering with borders
           try {
             const tableData = block.properties?.tableData;
             if (tableData && tableData.rows && tableData.rows.length > 0) {
@@ -350,6 +366,7 @@ export async function exportPdf(page: Page): Promise<void> {
                 }
 
                 const row = tableData.rows[i];
+                // Header row gets bold font and gray background
                 if (i === 0) {
                   pdf.setFont("helvetica", "bold");
                   pdf.setFillColor(240, 240, 240);
@@ -357,6 +374,7 @@ export async function exportPdf(page: Page): Promise<void> {
 
                 let xPos = pageMargin + 2;
                 for (const cell of row) {
+                  // Draw cell border and fill
                   pdf.rect(
                     xPos - 1,
                     yPosition - 6,
@@ -364,6 +382,7 @@ export async function exportPdf(page: Page): Promise<void> {
                     8,
                     i === 0 ? "F" : "S"
                   );
+                  // Add cell text (truncate if too long)
                   pdf.text(
                     String(cell || "").substring(0, 10),
                     xPos,
@@ -385,6 +404,7 @@ export async function exportPdf(page: Page): Promise<void> {
       }
     }
 
+    // Save the PDF file with the page title as filename
     pdf.save(`${page.title}.pdf`);
   } catch (error) {
     console.error("Error exporting to PDF:", error);
@@ -394,18 +414,18 @@ export async function exportPdf(page: Page): Promise<void> {
   }
 }
 
-/**
- * Exports page as PDF using HTML rendering with html2canvas (fallback method)
- * This is a fallback if text-based rendering fails
- */
+// Alternative PDF export method using HTML to canvas conversion
+// This is a fallback if text-based rendering fails
+// Converts the page to an image and embeds it in the PDF
 export async function exportPdfAlternative(page: Page): Promise<void> {
   try {
-    // @ts-ignore - jsPDF doesn't have complete type declarations
+    // Import required libraries
+    // @ts-ignore - Type definitions not complete
     const { jsPDF } = await import("jspdf");
-    // @ts-ignore - html2canvas doesn't have complete type declarations
+    // @ts-ignore - Type definitions not complete
     const html2canvas = (await import("html2canvas")).default;
 
-    // Generate HTML content with proper markdown styling
+    // Generate styled HTML content
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -413,6 +433,7 @@ export async function exportPdfAlternative(page: Page): Promise<void> {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${escapeHtml(page.title)}</title>
     <style>
+        /* Reset and base styles */
         * {
             box-sizing: border-box;
         }
@@ -489,21 +510,23 @@ export async function exportPdfAlternative(page: Page): Promise<void> {
 </body>
 </html>`;
 
-    // Create container
+    // Create a temporary container element to render the HTML
     const element = document.createElement("div");
     element.innerHTML = htmlContent;
     element.style.padding = "0";
     element.style.margin = "0";
     element.style.backgroundColor = "white";
-    element.style.width = "210mm";
+    element.style.width = "210mm"; // A4 width
     element.style.position = "fixed";
-    element.style.left = "-9999px";
+    element.style.left = "-9999px"; // Hide off-screen
 
+    // Add to DOM and wait for rendering
     document.body.appendChild(element);
     await new Promise((resolve) => setTimeout(resolve, 100));
 
+    // Convert HTML to canvas image
     const canvas = await html2canvas(element, {
-      scale: 2,
+      scale: 2, // Higher quality
       useCORS: true,
       allowTaint: true,
       logging: false,
@@ -512,22 +535,26 @@ export async function exportPdfAlternative(page: Page): Promise<void> {
       height: element.offsetHeight,
     });
 
+    // Clean up the temporary element
     document.body.removeChild(element);
 
+    // Convert canvas to image data
     const imgData = canvas.toDataURL("image/jpeg", 0.98);
     const pdf = new jsPDF("p", "mm", "a4");
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth - 20;
+    const imgWidth = pageWidth - 20; // Margins
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     let heightLeft = imgHeight;
     let position = 10;
 
+    // Add first page with image
     pdf.addImage(imgData, "JPEG", 10, position, imgWidth, imgHeight);
     heightLeft -= pageHeight - 20;
 
+    // Add additional pages if content is longer than one page
     while (heightLeft > 0) {
       position = heightLeft - imgHeight + 10;
       pdf.addPage();
