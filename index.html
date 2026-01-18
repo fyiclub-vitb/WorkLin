@@ -1,16 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Character encoding for proper text display -->
     <meta charset="UTF-8" />
+    
+    <!-- Set the favicon and app icons -->
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/logo.svg" />
+    
+    <!-- Theme color for mobile browsers (shows in address bar on some phones) -->
     <meta name="theme-color" content="#2563eb" />
+    
+    <!-- Responsive viewport settings for mobile devices -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Page title that shows in the browser tab -->
     <title>WorkLin – Open Source Notion Alternative</title>
+    
     <script>
-      // Prevent flash of unstyled content (FOUC) for dark mode
+      // Prevent flash of unstyled content when using dark mode
+      // This runs before the page renders to check if dark mode should be enabled
       (function() {
+        // Check if user has dark mode preference saved
         const darkMode = localStorage.getItem('darkMode');
+        
+        // Enable dark mode if:
+        // 1. User explicitly chose dark mode, OR
+        // 2. User hasn't chosen and their system prefers dark mode
         if (darkMode === 'true' || (darkMode === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark');
         }
@@ -18,7 +34,10 @@
     </script>
   </head>
   <body>
+    <!-- Root div where React will render the entire application -->
     <div id="root"></div>
+    
+    <!-- Load the main React application -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
