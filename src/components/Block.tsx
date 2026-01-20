@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Block as BlockType } from '../types/workspace';
 import { Trash2, GripVertical, MessageSquare } from 'lucide-react';
 import { BlockTypeSelector } from './BlockTypeSelector';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 // Import the new CommentThread component
 import { CommentThread } from './comments/CommentThread';
 // Import helper to check for comments
@@ -35,6 +37,22 @@ export const Block: React.FC<BlockProps> = ({
 
   const canEdit = canEditBlock(block, userId);
   const canChangePermissions = block.createdBy === userId; // Only creator can change permissions for now
+
+  // Drag and Drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -263,13 +281,20 @@ export const Block: React.FC<BlockProps> = ({
   return (
     <>
       <div
+        ref={setNodeRef}
+        style={style}
         className="group/block relative flex items-start gap-2 py-1 px-1 -mx-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Drag Handle & Controls */}
         <div className={`flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-opacity ${isHovered || showComments ? 'opacity-100' : ''}`}>
-          <button className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400">
+          <button 
+            {...attributes}
+            {...listeners}
+            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
+            aria-label="Drag to reorder"
+          >
             <GripVertical size={14} />
           </button>
           <BlockTypeSelector

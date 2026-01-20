@@ -4,6 +4,8 @@ import { Page, BlockType, Block } from '../types/workspace';
 import { Block as BlockComponent } from './Block';
 import { Plus, History, LayoutGrid, Table as TableIcon, Calendar as CalendarIcon, List } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { PageProperties } from './PageProperties';
 import { PageCover } from '../pages/PageCover';
 import { LogoIcon } from './Logo';
@@ -52,6 +54,14 @@ export const PageEditor: React.FC<PageEditorProps> = ({
   const [currentView, setCurrentView] = useState<ViewDefinition | null>(null);
   const [databasePages, setDatabasePages] = useState<Page[]>([]);
   const [isLoadingViews, setIsLoadingViews] = useState(false);
+
+  // Drag and Drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Initialize view from page settings
   useEffect(() => {
@@ -150,6 +160,29 @@ export const PageEditor: React.FC<PageEditorProps> = ({
       description: "Your changes have been saved.",
       duration: 3000,
     });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!page || !over || active.id === over.id) return;
+
+    const oldIndex = page.blocks.findIndex(block => block.id === active.id);
+    const newIndex = page.blocks.findIndex(block => block.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reorderedBlocks = arrayMove(page.blocks, oldIndex, newIndex);
+      
+      // Update page with new block order
+      if (onUpdatePage) {
+        onUpdatePage(page.id, { blocks: reorderedBlocks });
+        toast({
+          title: "Block moved",
+          description: "Block order has been updated.",
+          duration: 2000,
+        });
+      }
+    }
   };
 
   if (!page) {
@@ -417,23 +450,34 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                       </div>
                     </motion.div>
                   ) : (
-                    <div className="space-y-1">
-                      {page.blocks.map((block, index) => (
-                        <motion.div
-                          key={block.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.02 }}
-                        >
-                          <BlockComponent
-                            block={block}
-                            onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
-                            onDelete={() => handleDeleteBlock(block.id)}
-                            onAddBlock={() => handleAddBlock('paragraph')}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={page.blocks.map(block => block.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-1">
+                          {page.blocks.map((block, index) => (
+                            <motion.div
+                              key={block.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.02 }}
+                            >
+                              <BlockComponent
+                                block={block}
+                                onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                                onDelete={() => handleDeleteBlock(block.id)}
+                                onAddBlock={() => handleAddBlock('paragraph')}
+                              />
+                            </motion.div>
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
 
                   {/* Add Block Button - Always visible at bottom */}
