@@ -8,7 +8,9 @@ import { SecuritySettings } from './components/security/SecuritySettings';
 import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { CommandPalette } from './components/CommandPalette';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
+import { useCommandPalette } from './hooks/useCommandPalette';
 
 import { PageHeader } from './components/PageHeader'; // Adjust path if needed
 import { OfflineIndicator } from './components/ui/offline-indicator';
@@ -16,6 +18,7 @@ import { OfflineIndicator } from './components/ui/offline-indicator';
 
 function App() {
   const { isOpen, setIsOpen } = useKeyboardShortcuts();
+  const { isOpen: isPaletteOpen, setIsOpen: setIsPaletteOpen, commands } = useCommandPalette();
 
   return (
     <BrowserRouter>
@@ -35,6 +38,11 @@ function App() {
       <Toaster />
       
       <ShortcutsModal open={isOpen} onOpenChange={setIsOpen} />
+      <CommandPalette 
+        isOpen={isPaletteOpen} 
+        onClose={() => setIsPaletteOpen(false)} 
+        commands={commands}
+      />
       <OfflineIndicator />
     </BrowserRouter>
   );
