@@ -14,6 +14,15 @@ import {
 import { db } from './config';
 import { Page } from '../../types/workspace';
 
+// Search is implemented as a Firestore query + client-side refinement.
+//
+// Why not do it all in Firestore?
+// - Case-insensitive text search isn’t supported without an external index.
+// - Combining multiple inequality filters can require a lot of composite indexes.
+//
+// This is good enough for typical workspace sizes. If we need true full-text
+// search later, plug in Algolia/Meilisearch/Firestore extensions.
+
 const PAGES_COLLECTION = 'pages';
 const SAVED_SEARCHES_COLLECTION = 'saved_searches';
 
@@ -38,16 +47,15 @@ export const searchPages = async (filters: SearchFilters): Promise<SearchResult>
     try {
         const pagesRef = collection(db, PAGES_COLLECTION);
 
-        // Base Query: Filter by Workspace
-        // We will fetch more results and filter client-side to handle case-insensitivity and complex inequality combinations
-        // efficiently enough for typical workspace sizes.
+        // Base Query: Filter by Workspace.
+        // We fetch and then filter client-side for the flexible parts.
         let q = query(
             pagesRef,
             where('workspaceId', '==', filters.workspaceId),
             orderBy('updatedAt', 'desc')
         );
 
-        // Apply strict equality filters that don't interfere with ordering
+        // Apply strict equality filters that don't interfere with ordering.
         if (filters.authorId) {
             q = query(q, where('createdBy', '==', filters.authorId));
         }
@@ -56,8 +64,7 @@ export const searchPages = async (filters: SearchFilters): Promise<SearchResult>
             q = query(q, where('type', '==', filters.type));
         }
 
-        // We skip 'tags' in DB query if we want to be safe about indexes, or we apply it if we are sure.
-        // Let's apply client-side for maximum flexibility with the text search.
+        // Tags and text query are applied client-side to avoid index explosion.
 
         const querySnapshot = await getDocs(q);
         let results = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Page));
@@ -69,7 +76,7 @@ export const searchPages = async (filters: SearchFilters): Promise<SearchResult>
             const lowerQuery = filters.query.toLowerCase();
             results = results.filter(page => {
                 const titleMatch = page.title?.toLowerCase().includes(lowerQuery);
-                // We could also check plain text content if we had it easily available on the page object
+                // We could also search extracted plain-text content if we store it.
                 return titleMatch;
             });
         }
@@ -87,7 +94,7 @@ export const searchPages = async (filters: SearchFilters): Promise<SearchResult>
             const end = filters.dateRange.end ? filters.dateRange.end.getTime() : Infinity;
 
             results = results.filter(page => {
-                // Handle Firestore Timestamp or Date object
+                // updatedAt can be a Firestore Timestamp or a serialized value.
                 const pageDate = page.updatedAt instanceof Timestamp
                     ? page.updatedAt.toDate().getTime()
                     : new Date(page.updatedAt).getTime();
@@ -103,7 +110,8 @@ export const searchPages = async (filters: SearchFilters): Promise<SearchResult>
     }
 };
 
-// ... Saved Search Logic remains the same ...
+// Saved searches are just named filter presets per user.
+// These are stored so the UI can show "Recent" or "Pinned" searches.
 export interface SavedSearch {
     id: string;
     name: string;

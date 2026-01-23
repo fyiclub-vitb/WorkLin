@@ -1,3 +1,9 @@
+// Firebase bootstrap for the frontend entrypoint.
+//
+// Note: There is also `src/lib/firebase/config.ts` which exports Firestore/Auth/
+// Functions references used throughout the app.
+// This file is the minimal init used by `src/main.tsx`.
+
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
@@ -19,6 +25,9 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Analytics is optional; keeping the reference here makes it easy to remove in forks.
+// We don't always call Analytics directly, but initialization wires up automatic events.
+void getAnalytics(app);
 
 export default app;
