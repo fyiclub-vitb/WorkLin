@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Palette, Database, Globe, Save } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Palette, Database, Globe, Save, Users, Share2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useToast } from '../hooks/use-toast';
-import { Logo } from '../components/Logo';
+
+import { ShareDialog } from '../components/workspace/ShareDialog';
+import { MembersList } from '../components/workspace/MembersList';
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +16,16 @@ export const Settings: React.FC = () => {
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [language, setLanguage] = useState('en');
+  
+  // Workspace sharing state
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [membersRefreshTrigger, setMembersRefreshTrigger] = useState(0);
+  
+  // These would come from your workspace context/store in production
+  const currentWorkspaceId = 'default'; // Replace with actual workspace ID
+  const currentUserId = 'local-user'; // Replace with actual user ID
+  const workspaceOwnerId = 'local-user'; // Replace with actual owner ID
+  const workspaceName = 'My Workspace'; // Replace with actual workspace name
 
   const handleSave = () => {
     // Save settings to localStorage or backend
@@ -28,6 +40,11 @@ export const Settings: React.FC = () => {
       description: "Your preferences have been saved successfully.",
       duration: 3000,
     });
+  };
+
+  const handleMemberAdded = () => {
+    // Refresh members list
+    setMembersRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -45,7 +62,7 @@ export const Settings: React.FC = () => {
               <ArrowLeft size={18} />
               Back
             </Button>
-            <Logo size={32} />
+            
           </div>
           <Button onClick={handleSave} className="gap-2">
             <Save size={18} />
@@ -59,6 +76,38 @@ export const Settings: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
 
         <div className="space-y-6">
+          {/* Workspace Sharing Section - NEW */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Workspace Sharing
+                  </CardTitle>
+                  <CardDescription>
+                    Manage who has access to this workspace
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => setShowShareDialog(true)}
+                  className="gap-2"
+                >
+                  <Share2 size={16} />
+                  Share Workspace
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <MembersList
+                workspaceId={currentWorkspaceId}
+                ownerId={workspaceOwnerId}
+                currentUserId={currentUserId}
+                refreshTrigger={membersRefreshTrigger}
+              />
+            </CardContent>
+          </Card>
+
           {/* Appearance */}
           <Card>
             <CardHeader>
@@ -228,6 +277,16 @@ export const Settings: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        workspaceId={currentWorkspaceId}
+        workspaceName={workspaceName}
+        currentUserId={currentUserId}
+        onMemberAdded={handleMemberAdded}
+      />
     </div>
   );
 };

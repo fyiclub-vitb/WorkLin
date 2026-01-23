@@ -1,5 +1,8 @@
-// Utility functions for localStorage operations
-// Currently handled directly in useWorkspace hook, but kept for future extensibility
+// Small localStorage helpers.
+//
+// These are used for lightweight persistence (e.g. last opened workspace/page).
+// They intentionally swallow errors because storage can fail in private mode,
+// embedded browsers, or when quota is exceeded.
 
 export const STORAGE_KEY = 'worklin-workspace';
 
@@ -11,6 +14,7 @@ export const saveToStorage = (data: unknown): void => {
   }
 };
 
+// Reads from localStorage and falls back to `defaultValue` if parsing/storage fails.
 export const loadFromStorage = <T>(defaultValue: T): T => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);

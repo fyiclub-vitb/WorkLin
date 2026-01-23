@@ -83,15 +83,24 @@ export const FullTextSearch = () => {
     setError(null);
     setShowSuggestions(false);
 
+    // Debug logging
     const pages = workspace.pages || [];
+    console.log('[Search] Workspace ID:', workspace.id);
+    console.log('[Search] Pages count:', pages.length);
+    console.log('[Search] Pages:', pages.map(p => ({ id: p.id, title: p.title, workspaceId: p.workspaceId })));
+    console.log('[Search] Query:', searchQuery);
 
     try {
+      // Perform client-side search using MiniSearch
       const searchResults = searchWorkspace(searchQuery, pages, {
         workspaceId: workspace.id,
         query: searchQuery,
         limit: 20,
-        fuzzyThreshold: 0.2,
+        fuzzyThreshold: 0.2, // MiniSearch fuzzy threshold
       });
+
+      console.log('[Search] Results count:', searchResults.length);
+      console.log('[Search] Results:', searchResults);
 
       setResults(searchResults);
       

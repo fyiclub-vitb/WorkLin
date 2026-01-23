@@ -9,11 +9,13 @@ import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
-
-import { PageHeader } from './components/PageHeader'; // Adjust path if needed
+import { PageHeader } from './components/PageHeader';
 import { OfflineIndicator } from './components/ui/offline-indicator';
 
-
+// App-level routing.
+//
+// `Workspace` is used as a container for multiple in-app routes (search/analytics)
+// so we keep a single shared layout and switch internal views based on location.
 function App() {
   const { isOpen, setIsOpen } = useKeyboardShortcuts();
 
