@@ -57,6 +57,7 @@
     "katex": "^0.16.27",
     "lodash": "^4.17.21",
     "lucide-react": "^0.462.0",
+    "minisearch": "^7.2.0",
     "prismjs": "^1.30.0",
     "qrcode": "^1.5.4",
     "randomcolor": "^0.6.2",

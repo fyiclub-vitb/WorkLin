@@ -14,6 +14,7 @@ import { CollaborationProvider } from './collaboration/CollaborationProvider';
 import { useToast } from '../hooks/use-toast';
 import { ExportMenu } from "./page/ExportMenu";
 import { VersionHistory } from "./VersionHistory";
+import { EmptyState } from './ui/empty-state';
 import { TableView } from './views/TableView';
 import { BoardView } from './views/BoardView';
 import { CalendarView } from './views/CalendarView';
@@ -409,46 +410,15 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                 // Default Block Editor
                 <>
                   {page.blocks.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
+                    <EmptyState
+                      title="Start writing"
+                      description="Add your first block or type / for commands."
+                      actionLabel="Add block"
+                      onAction={() => handleAddBlock('paragraph')}
+                      icon={<Plus size={24} />}
+                      inverted={!!page.cover}
                       className="py-8 sm:py-12"
-                    >
-                      <div className="text-center mb-6 sm:mb-8">
-                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full mb-4 ${
-                          page.cover 
-                            ? 'bg-white/20 backdrop-blur-sm' 
-                            : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
-                          <Plus size={20} className={`sm:w-6 sm:h-6 ${page.cover ? 'text-white' : 'text-gray-400'}`} />
-                        </div>
-                        <p className={`text-base sm:text-lg mb-2 ${
-                          page.cover 
-                            ? 'text-white/90' 
-                            : 'text-gray-600 dark:text-gray-400'
-                        }`}>
-                          This page is empty
-                        </p>
-                        <p className={`text-xs sm:text-sm mb-4 sm:mb-6 ${
-                          page.cover 
-                            ? 'text-white/70' 
-                            : 'text-gray-500 dark:text-gray-500'
-                        }`}>
-                          Type <kbd className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs ${
-                            page.cover 
-                              ? 'bg-white/20 text-white' 
-                              : 'bg-gray-100 dark:bg-gray-800'
-                          }`}>/</kbd> to insert blocks
-                        </p>
-                        <button
-                          onClick={() => handleAddBlock('paragraph')}
-                          className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-xs sm:text-sm font-medium"
-                        >
-                          <Plus size={14} className="sm:w-4 sm:h-4" />
-                          Add your first block
-                        </button>
-                      </div>
-                    </motion.div>
+                    />
                   ) : (
                     <DndContext
                       sensors={sensors}
