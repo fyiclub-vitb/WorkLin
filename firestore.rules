@@ -55,6 +55,25 @@ service cloud.firestore {
       // Only system/Cloud Functions can write security alerts
       allow write: if false; // Cloud Functions use admin SDK, bypassing rules
     }
+    
+    // Search Index
+    match /search_index/{indexId} {
+      // Users can read search index for workspaces they have access to
+      allow read: if request.auth != null;
+      // Only Cloud Functions and authenticated users can write (for client-side indexing)
+      allow write: if request.auth != null;
+    }
+    
+    // Search Analytics
+    match /search_analytics/{analyticsId} {
+      // Users can read their own search analytics
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      // Users can write their own search analytics
+      allow write: if request.auth != null && 
+        (!exists(/databases/$(database)/documents/search_analytics/$(analyticsId)) || 
+         resource.data.userId == request.auth.uid);
+    }
   }
 }
 
