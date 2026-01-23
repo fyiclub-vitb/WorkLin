@@ -9,7 +9,7 @@ import { AuditLog } from './components/security/AuditLog';
 import { Toaster } from './components/ui/toaster';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
-
+import { PageHeader } from './components/PageHeader';
 import { OfflineIndicator } from './components/ui/offline-indicator';
 
 // App-level routing.
