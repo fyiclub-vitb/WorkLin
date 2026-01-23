@@ -4,14 +4,24 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  serverTimestamp,
-  getDoc
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from './config';
 import { addToQueue } from '../offline/queue';
 
+// Lightweight page utilities used by some parts of the UI.
+//
+// Note: There is a richer page API in `firebase/database.ts` that is workspace-aware.
+// This module focuses on “quick page” operations and includes offline-queue wrappers.
 const PAGES_COLLECTION = 'pages';
 
+/**
+ * Create a blank “Untitled Page”.
+ *
+ * Offline mode:
+ * - We enqueue the request and return a temporary id so the UI can react immediately.
+ * - The temp id is NOT automatically reconciled with the server id yet.
+ */
 export const createPage = async (userId: string) => {
   if (!navigator.onLine) {
     await addToQueue({ type: 'createPage', payload: { userId } });
@@ -33,6 +43,13 @@ export const createPage = async (userId: string) => {
   }
 };
 
+/**
+ * Update a page document by id.
+ *
+ * `data` is intentionally untyped here because different screens patch different
+ * subsets of fields (title, icon, cover, metadata...). If this stabilizes, we can
+ * swap to `Partial<Page>`.
+ */
 export const updatePage = async (pageId: string, data: any) => {
   if (!navigator.onLine) {
     await addToQueue({ type: 'updatePage', payload: { pageId, data } });
@@ -51,7 +68,8 @@ export const updatePage = async (pageId: string, data: any) => {
   }
 };
 
-// Move page to trash (archive)
+// Move page to trash (archive).
+// We keep the doc around so links/history can still reference it.
 export const deletePage = async (pageId: string) => {
   if (!navigator.onLine) {
     await addToQueue({ type: 'deletePage', payload: { pageId } });
@@ -70,7 +88,7 @@ export const deletePage = async (pageId: string) => {
   }
 };
 
-// Restore page from trash
+// Restore page from trash.
 export const restorePage = async (pageId: string) => {
   if (!navigator.onLine) {
     await addToQueue({ type: 'restorePage', payload: { pageId } });
@@ -89,7 +107,10 @@ export const restorePage = async (pageId: string) => {
   }
 };
 
-// Permanently delete page (only for archived pages)
+// Permanently delete page (only for archived pages).
+//
+// If you call this on a non-archived page, the UI/permission layer should block it.
+// Firestore itself won’t enforce that without rules.
 export const permanentlyDeletePage = async (pageId: string) => {
   if (!navigator.onLine) {
     await addToQueue({ type: 'permanentlyDeletePage', payload: { pageId } });

@@ -1,10 +1,12 @@
 /**
  * Unified Storage Interface
- * Switch between storage providers easily
- * 
- * To use Cloudinary: import from './cloudinary'
- * To use Supabase: import from './supabase'
- * To use Firebase: import from '../firebase/storage'
+ *
+ * This file is intentionally a "barrel": it decides which implementation we
+ * export as the default storage API for the app.
+ *
+ * Important: `export * from ...` is resolved at build time.
+ * Calling `getStorageProvider()` does NOT automatically switch the exported
+ * functions at runtime; it’s just a helper for UI/config screens.
  */
 
 // Default to Cloudinary (recommended - largest free tier)
@@ -18,7 +20,9 @@ export * from './cloudinary';
 
 /**
  * Storage Provider Configuration
- * Set this in your .env file to switch providers
+ *
+ * VITE_STORAGE_PROVIDER is mainly used for showing/validating configuration in
+ * the UI. Switching providers still requires changing the export above.
  */
 export const getStorageProvider = (): 'cloudinary' | 'supabase' | 'firebase' => {
   const provider = import.meta.env.VITE_STORAGE_PROVIDER || 'cloudinary';

@@ -4,6 +4,8 @@ import { Page, BlockType, Block } from '../types/workspace';
 import { Block as BlockComponent } from './Block';
 import { Plus, History, LayoutGrid, Table as TableIcon, Calendar as CalendarIcon, List } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { PageProperties } from './PageProperties';
 import { PageCover } from '../pages/PageCover';
 import { LogoIcon } from './Logo';
@@ -12,6 +14,7 @@ import { CollaborationProvider } from './collaboration/CollaborationProvider';
 import { useToast } from '../hooks/use-toast';
 import { ExportMenu } from "./page/ExportMenu";
 import { VersionHistory } from "./VersionHistory";
+import { EmptyState } from './ui/empty-state';
 import { TableView } from './views/TableView';
 import { BoardView } from './views/BoardView';
 import { CalendarView } from './views/CalendarView';
@@ -52,6 +55,14 @@ export const PageEditor: React.FC<PageEditorProps> = ({
   const [currentView, setCurrentView] = useState<ViewDefinition | null>(null);
   const [databasePages, setDatabasePages] = useState<Page[]>([]);
   const [isLoadingViews, setIsLoadingViews] = useState(false);
+
+  // Drag and Drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Initialize view from page settings
   useEffect(() => {
@@ -150,6 +161,29 @@ export const PageEditor: React.FC<PageEditorProps> = ({
       description: "Your changes have been saved.",
       duration: 3000,
     });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!page || !over || active.id === over.id) return;
+
+    const oldIndex = page.blocks.findIndex(block => block.id === active.id);
+    const newIndex = page.blocks.findIndex(block => block.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reorderedBlocks = arrayMove(page.blocks, oldIndex, newIndex);
+      
+      // Update page with new block order
+      if (onUpdatePage) {
+        onUpdatePage(page.id, { blocks: reorderedBlocks });
+        toast({
+          title: "Block moved",
+          description: "Block order has been updated.",
+          duration: 2000,
+        });
+      }
+    }
   };
 
   if (!page) {
@@ -376,64 +410,44 @@ export const PageEditor: React.FC<PageEditorProps> = ({
                 // Default Block Editor
                 <>
                   {page.blocks.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
+                    <EmptyState
+                      title="Start writing"
+                      description="Add your first block or type / for commands."
+                      actionLabel="Add block"
+                      onAction={() => handleAddBlock('paragraph')}
+                      icon={<Plus size={24} />}
+                      inverted={!!page.cover}
                       className="py-8 sm:py-12"
-                    >
-                      <div className="text-center mb-6 sm:mb-8">
-                        <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full mb-4 ${
-                          page.cover 
-                            ? 'bg-white/20 backdrop-blur-sm' 
-                            : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
-                          <Plus size={20} className={`sm:w-6 sm:h-6 ${page.cover ? 'text-white' : 'text-gray-400'}`} />
-                        </div>
-                        <p className={`text-base sm:text-lg mb-2 ${
-                          page.cover 
-                            ? 'text-white/90' 
-                            : 'text-gray-600 dark:text-gray-400'
-                        }`}>
-                          This page is empty
-                        </p>
-                        <p className={`text-xs sm:text-sm mb-4 sm:mb-6 ${
-                          page.cover 
-                            ? 'text-white/70' 
-                            : 'text-gray-500 dark:text-gray-500'
-                        }`}>
-                          Type <kbd className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs ${
-                            page.cover 
-                              ? 'bg-white/20 text-white' 
-                              : 'bg-gray-100 dark:bg-gray-800'
-                          }`}>/</kbd> to insert blocks
-                        </p>
-                        <button
-                          onClick={() => handleAddBlock('paragraph')}
-                          className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-xs sm:text-sm font-medium"
-                        >
-                          <Plus size={14} className="sm:w-4 sm:h-4" />
-                          Add your first block
-                        </button>
-                      </div>
-                    </motion.div>
+                    />
                   ) : (
-                    <div className="space-y-1">
-                      {page.blocks.map((block, index) => (
-                        <motion.div
-                          key={block.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.02 }}
-                        >
-                          <BlockComponent
-                            block={block}
-                            onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
-                            onDelete={() => handleDeleteBlock(block.id)}
-                            onAddBlock={() => handleAddBlock('paragraph')}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={page.blocks.map(block => block.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-1">
+                          {page.blocks.map((block, index) => (
+                            <motion.div
+                              key={block.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.02 }}
+                            >
+                              <BlockComponent
+                                block={block}
+                                onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                                onDelete={() => handleDeleteBlock(block.id)}
+                                onAddBlock={() => handleAddBlock('paragraph')}
+                              />
+                            </motion.div>
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
 
                   {/* Add Block Button - Always visible at bottom */}
