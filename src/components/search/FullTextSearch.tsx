@@ -15,11 +15,13 @@ import {
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 
 export const FullTextSearch = () => {
   const { workspace } = useWorkspace();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setCurrentPageId } = useWorkspaceStore();
 
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -169,7 +171,9 @@ export const FullTextSearch = () => {
       // Log click analytics (localStorage only)
       logSearchClick(query, result.page.id, workspace.id);
     }
-    navigate(`/workspace/${workspace?.id}/page/${result.page.id}`);
+    // Set the current page and navigate to the main workspace view
+    setCurrentPageId(result.page.id);
+    navigate('/app');
   };
 
   const clearSearch = () => {

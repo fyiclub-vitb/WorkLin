@@ -17,12 +17,14 @@ import { saveSearchQuery, SearchFilters as SearchFiltersType } from '../../lib/f
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 
 // This component provides advanced search with filters, suggestions, and keyboard navigation
 export const AdvancedSearch = () => {
     const { workspace } = useWorkspace();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { setCurrentPageId } = useWorkspaceStore();
 
     const [query, setQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
@@ -171,7 +173,9 @@ export const AdvancedSearch = () => {
         if (workspace?.id) {
             logSearchClick(query, result.page.id, workspace.id);
         }
-        navigate(`/workspace/${workspace?.id}/page/${result.page.id}`);
+        // Set the current page and navigate to the main workspace view
+        setCurrentPageId(result.page.id);
+        navigate('/app');
     };
 
     // Save this search query for later use
