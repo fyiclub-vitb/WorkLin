@@ -13,6 +13,14 @@ import { functions, auth } from '../firebase/config';
  * * Reliability:
  * - Includes fallback/graceful failure modes: if logging fails, the user action typically
  * should NOT be blocked (fail-open), unless strictly required by compliance policy.
+ * Audit logging is a best-effort, optional feature.
+ *
+ * The app should keep working even if:
+ * - Firebase Functions aren't deployed
+ * - the user is offline
+ * - a call fails due to permission / quota
+ *
+ * That's why errors here are swallowed by default.
  */
 
 /**
@@ -41,7 +49,12 @@ export type AuditStatus = 'SUCCESS' | 'FAIL' | 'BLOCKED' | 'FAILED';
 export type ActorRole = 'user' | 'admin' | 'system';
 
 /**
- * Options for logging an audit event
+ * Options for logging an audit event.
+ *
+ * Keep `metadata` small and non-sensitive. Avoid:
+ * - raw page content
+ * - auth tokens
+ * - full error stack traces
  */
 export interface AuditLogOptions {
   action: AuditAction;
@@ -62,9 +75,12 @@ const logAuditEventCallable = httpsCallable<AuditLogOptions, { success: boolean 
 );
 
 /**
- * Log an audit event to Firestore via Cloud Function
- * * The Cloud Function extracts IP and userAgent from request headers securely.
- * * @param options - The audit event details
+ * Log an audit event to Firestore via Cloud Function.
+ *
+ * The Cloud Function (server-side) can enrich the event with:
+ * - IP address
+ * - user agent
+ * - geo / risk signals (optional)
  */
 export const logAction = async (options: AuditLogOptions): Promise<void> => {
   try {
@@ -184,6 +200,10 @@ export const logSecurityChange = async (
  * * @param action The audit action name
  * @param fn The function to execute
  * @param options Additional audit log options
+ * Wrapper that executes `fn()` and writes a SUCCESS/FAILED audit event.
+ *
+ * Useful for settings flows where we want a clean audit trail without duplicating
+ * try/catch + logAction everywhere.
  */
 export const withAudit = async <T>(
   action: AuditAction,

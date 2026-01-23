@@ -14,6 +14,12 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 
+// Comments are stored as a top-level collection keyed by `blockId`.
+// This keeps reads simple (subscribe to one block) and avoids deeply nested paths.
+//
+// If we later need stronger permissions, we can enforce that at the rules layer
+// (e.g. only workspace members can write/read).
+
 export interface Comment {
   id: string;
   blockId: string;
@@ -79,7 +85,9 @@ export const deleteComment = async (commentId: string) => {
   }
 };
 
-// Real-time listener for comments on a specific block
+// Real-time listener for comments on a specific block.
+//
+// Ordering is oldest -> newest so the UI can render naturally as a thread.
 export const subscribeToComments = (blockId: string, callback: (comments: Comment[]) => void) => {
   const q = query(
     collection(db, COMMENTS_COLLECTION),
@@ -96,7 +104,9 @@ export const subscribeToComments = (blockId: string, callback: (comments: Commen
   });
 };
 
-// Get count of unresolved comments (useful for UI badges)
+// Get count of unresolved comments (useful for UI badges).
+// This is intentionally a separate query so we don't have to pull the full thread
+// just to show a small badge.
 export const getCommentCount = async (blockId: string) => {
   try {
     const q = query(

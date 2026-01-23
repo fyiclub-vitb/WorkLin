@@ -3,6 +3,15 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth, db } from '../firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 
+// 2FA is implemented as a Functions-backed feature.
+//
+// Why functions?
+// - TOTP secret generation + verification shouldn't run purely on the client.
+// - It keeps secrets out of localStorage and lets us enforce rate limits.
+//
+// If Functions aren't deployed, we treat 2FA as an optional feature and surface a
+// friendly error message.
+
 /**
  * Callable function references
  */
@@ -22,8 +31,10 @@ const disable2FACallable = httpsCallable<{ code: string }, { success: boolean }>
 );
 
 /**
- * Generate a 2FA secret and return the otpauth URL for QR code generation
- * @returns Object containing secret and otpauth URL
+ * Generate a 2FA secret and return the otpauth URL for QR code generation.
+ *
+ * The returned `secret` is shown once to the user (for authenticator setup) and
+ * should not be stored in plain text long-term.
  */
 export const enable2FA = async (): Promise<{ secret: string; otpauthUrl: string }> => {
   const user = auth.currentUser;
@@ -46,10 +57,10 @@ export const enable2FA = async (): Promise<{ secret: string; otpauthUrl: string 
 };
 
 /**
- * Verify a TOTP code and enable 2FA if valid
- * @param code The 6-digit TOTP code
- * @param secret The secret returned from enable2FA
- * @returns true if code is valid and 2FA is enabled
+ * Verify a TOTP code and enable 2FA if valid.
+ *
+ * Server-side verification handles clock drift rules and avoids leaking details
+ * about why a code failed.
  */
 export const verify2FA = async (code: string, secret: string): Promise<boolean> => {
   const user = auth.currentUser;
@@ -69,10 +80,8 @@ export const verify2FA = async (code: string, secret: string): Promise<boolean> 
 };
 
 /**
- * Disable 2FA for the current user
- * Requires a valid TOTP code
- * @param code The 6-digit TOTP code
- * @returns true if successfully disabled
+ * Disable 2FA for the current user.
+ * Requires a valid TOTP code so we don't let a stolen session disable protection.
  */
 export const disable2FA = async (code: string): Promise<boolean> => {
   const user = auth.currentUser;
@@ -92,8 +101,9 @@ export const disable2FA = async (code: string): Promise<boolean> => {
 };
 
 /**
- * Check if 2FA is enabled for the current user
- * @returns true if 2FA is enabled
+ * Check if 2FA is enabled for the current user.
+ *
+ * We track this in a `userSecurity/{uid}` document written by the backend.
  */
 export const is2FAEnabled = async (): Promise<boolean> => {
   const user = auth.currentUser;
@@ -118,7 +128,10 @@ export const is2FAEnabled = async (): Promise<boolean> => {
 };
 
 /**
- * Get user security settings
+ * Get user security settings.
+ *
+ * The return shape is used directly by the UI; defaults are provided so screens
+ * don't have to handle missing docs.
  */
 export const getUserSecurity = async () => {
   const user = auth.currentUser;
@@ -146,4 +159,3 @@ export const getUserSecurity = async () => {
     return null;
   }
 };
-

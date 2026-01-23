@@ -34,6 +34,17 @@ import { addToQueue } from '../offline/queue';
  */
 
 // Collection Constants
+// Firestore CRUD helpers for the core Workspace/Page/Block model.
+//
+// Collections:
+// - workspaces: top-level workspace docs (owner, members, settings)
+// - pages: top-level page docs, each references workspaceId
+// - blocks: top-level block docs, each references pageId
+//
+// This file is “backend-ish”: it tries to keep Firestore specifics contained so
+// UI code can work with plain objects.
+
+// Collections
 const WORKSPACES_COLLECTION = 'workspaces';
 const PAGES_COLLECTION = 'pages';
 const BLOCKS_COLLECTION = 'blocks';
@@ -149,6 +160,8 @@ export const getPagesByWorkspace = async (workspaceId: string) => {
     const q = query(
       collection(db, PAGES_COLLECTION),
       where('workspaceId', '==', workspaceId),
+      // Assumes `updatedAt` exists and is a Timestamp for sorting.
+      // Firestore may require a composite index depending on additional filters.
       orderBy('updatedAt', 'desc')
     );
     const querySnapshot = await getDocs(q);
@@ -254,6 +267,9 @@ export const subscribeToPage = (pageId: string, callback: (page: any) => void) =
  * This ensures the UI remains responsive even without a connection.
  */
 export const createBlock = async (pageId: string, blockData: Partial<Block>) => {
+  // Offline mode: return a temp block so the editor can keep moving.
+  // The sync layer currently just replays the create, so callers should be ready
+  // for a later “real” id once we add reconciliation.
   if (!navigator.onLine) {
     const tempId = 'temp-block-' + Date.now();
     await addToQueue({ type: 'createBlock', payload: { pageId, blockData: { ...blockData, id: tempId } } });
@@ -280,6 +296,7 @@ export const getBlocksByPage = async (pageId: string) => {
     const q = query(
       collection(db, BLOCKS_COLLECTION),
       where('pageId', '==', pageId),
+      // Editor expects stable block ordering.
       orderBy('createdAt', 'asc')
     );
     const querySnapshot = await getDocs(q);
@@ -299,6 +316,8 @@ export const getBlocksByPage = async (pageId: string) => {
  * Similar to createBlock, if offline, queues the update.
  */
 export const updateBlock = async (blockId: string, updates: Partial<Block>) => {
+  // Offline updates are queued and treated as “best effort”.
+  // This means conflicts are possible if the same block is edited on multiple devices.
   if (!navigator.onLine) {
     await addToQueue({ type: 'updateBlock', payload: { blockId, updates } });
     return { error: null, offline: true };
