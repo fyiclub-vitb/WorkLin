@@ -2,9 +2,11 @@ import { getQueue, removeFromQueue, OfflineOperation } from './queue';
 import { updatePage, createPage, deletePage } from '../firebase/pages';
 import { updateBlock, createBlock, deleteBlock } from '../firebase/database';
 
+// Unique identifier per browser tab (used only for debugging/testing)
+const TAB_ID = crypto.randomUUID();
+
 // Simple single-flight lock.
-// We don't want overlapping sync runs because it can double-apply ops or fight over
-// queue removal.
+// Intended to prevent overlapping sync runs in the same tab.
 let isSyncing = false;
 
 /**
@@ -12,38 +14,71 @@ let isSyncing = false;
  *
  * Notes:
  * - Operations are processed in insertion order.
- * - We stop on the first failure and keep the remaining ops for a later retry.
- *   (This avoids tearing through the queue when the auth/session/network state is bad.)
+ * - We stop on the first failure and keep remaining ops for retry.
+ * - This version includes logging to detect concurrent sync executions.
  */
 export const syncOfflineChanges = async () => {
-    if (isSyncing) return;
+    const syncRunId = crypto.randomUUID();
+
+    console.log(
+        `[SYNC ATTEMPT] tab=${TAB_ID} run=${syncRunId} isSyncing=${isSyncing}`
+    );
+
+    if (isSyncing) {
+        console.log(
+            `[SYNC BLOCKED] tab=${TAB_ID} run=${syncRunId}`
+        );
+        return;
+    }
 
     const queue = await getQueue();
-    if (queue.length === 0) return;
+    if (queue.length === 0) {
+        console.log(
+            `[SYNC ABORT] tab=${TAB_ID} run=${syncRunId} queue empty`
+        );
+        return;
+    }
 
     isSyncing = true;
-    console.log(`Starting sync of ${queue.length} offline operations...`);
+
+    console.log(
+        `[SYNC START] tab=${TAB_ID} run=${syncRunId} ops=${queue.length}`
+    );
 
     for (const op of queue) {
         try {
+            console.log(
+                `[OP APPLY] tab=${TAB_ID} run=${syncRunId} opId=${op.id} type=${op.type}`
+            );
+
             await processOperation(op);
-            if (op.id) await removeFromQueue(op.id);
+
+            if (op.id) {
+                await removeFromQueue(op.id);
+                console.log(
+                    `[OP REMOVED] tab=${TAB_ID} run=${syncRunId} opId=${op.id}`
+                );
+            }
         } catch (error) {
-            console.error('Failed to sync operation:', op, error);
-            // Some errors are “permanent” (bad IDs, missing permissions, etc.), but
-            // detecting them reliably depends on provider error codes.
-            // For now we keep the op and retry later.
+            console.error(
+                `[SYNC FAIL] tab=${TAB_ID} run=${syncRunId} op=${op}`,
+                error
+            );
             break;
         }
     }
 
     isSyncing = false;
-    console.log('Sync completed.');
+
+    console.log(
+        `[SYNC END] tab=${TAB_ID} run=${syncRunId}`
+    );
 };
 
-// Keep this switch aligned with `OfflineOperation['type']` in `queue.ts`.
-// Payloads are intentionally lightweight and come from the offline wrappers in
-// firebase modules.
+/**
+ * Apply a single offline operation to the backend.
+ * Must stay aligned with OfflineOperation['type'].
+ */
 async function processOperation(op: OfflineOperation) {
     const { type, payload } = op;
 
@@ -51,33 +86,40 @@ async function processOperation(op: OfflineOperation) {
         case 'updatePage':
             await updatePage(payload.pageId, payload.data);
             break;
+
         case 'createPage':
-            // NOTE: current createPage API only takes userId (it creates an untitled page).
-            // If we later support offline page drafts, extend the payload + create call.
             await createPage(payload.userId);
             break;
+
         case 'deletePage':
             await deletePage(payload.pageId);
             break;
+
         case 'updateBlock':
             await updateBlock(payload.blockId, payload.updates);
             break;
+
         case 'createBlock':
             await createBlock(payload.pageId, payload.blockData);
             break;
+
         case 'deleteBlock':
             await deleteBlock(payload.blockId);
             break;
+
         default:
-            console.warn('Unknown operation type:', type);
+            console.warn(
+                `[UNKNOWN OP] tab=${TAB_ID} type=${type}`
+            );
     }
 }
 
-// When the browser reports we’re back online, try to flush the queue.
-// (If the app is open offline and then reconnects, this avoids needing a refresh.)
+// Trigger sync when browser comes back online
 if (typeof window !== 'undefined') {
     window.addEventListener('online', () => {
-        console.log('App is online. Triggering sync...');
+        console.log(
+            `[ONLINE EVENT] tab=${TAB_ID} triggering sync`
+        );
         syncOfflineChanges();
     });
 }
