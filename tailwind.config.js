@@ -87,6 +87,9 @@ export default {
         md: "calc(var(--radius) - 2px)",       // Medium radius (slightly smaller)
         sm: "calc(var(--radius) - 4px)",       // Small radius (even smaller)
       },
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
+      }
     },
   },
   
