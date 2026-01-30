@@ -45,6 +45,7 @@
     "@tiptap/extension-text-style": "^2.9.3",
     "@tiptap/react": "^2.9.3",
     "@tiptap/starter-kit": "^2.9.3",
+    "build": "^0.1.4",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
