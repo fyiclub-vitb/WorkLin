@@ -13,7 +13,8 @@ interface UploadResult {
   error: string | null;
 }
 
-// Initialize Supabase client
+// Client is created on demand so we fail fast with a clear error when env vars
+// aren't configured (instead of sprinkling checks across every call).
 const getSupabaseClient = () => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -29,7 +30,7 @@ const getSupabaseClient = () => {
  * Upload file to Supabase Storage
  * @param file - File to upload
  * @param bucket - Storage bucket name
- * @param path - File path within bucket
+ * @param path - Folder path within bucket (we generate the filename)
  */
 export const uploadFile = async (
   file: File,
@@ -39,12 +40,13 @@ export const uploadFile = async (
   try {
     const supabase = getSupabaseClient();
     
-    // Generate unique filename
+    // Generate a unique filename so users can upload the same name repeatedly.
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = path ? `${path}/${fileName}` : fileName;
 
     // Upload file
-    const { data, error } = await supabase.storage
+    // `upsert: false` prevents accidental overwrite if a collision ever happens.
+    const { data: _data, error } = await supabase.storage
       .from(bucket)
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -52,10 +54,13 @@ export const uploadFile = async (
       });
 
     if (error) {
+      // We throw here to reuse the catch -> consistent `{ url: null, error }` return.
       throw error;
     }
 
-    // Get public URL
+    // Get public URL.
+    // This assumes the bucket is configured for public access or has an RLS policy
+    // that allows reads for anon users.
     const { data: urlData } = supabase.storage
       .from(bucket)
       .getPublicUrl(filePath);

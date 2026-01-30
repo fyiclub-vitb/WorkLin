@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { ArrowLeft, LogIn, Lock, Mail, ArrowRight, KeyRound } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { loginWithEmail, loginWithGoogle, signUpWithEmail, resetPassword } from '../lib/firebase/auth';
-import { getCurrentUser } from '../lib/firebase/auth';
 import { LogoIcon } from '../components/Logo';
 
 export const Login: React.FC = () => {

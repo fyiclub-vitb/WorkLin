@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { User } from 'firebase/auth';
 import { Page, Block, Workspace } from '../types/workspace';
 
+// Central client-side store for "current session" state.
+//
+// Goal: keep UI components dumb by putting view-friendly state here, while the
+// source of truth for persisted data stays in Firestore.
+//
+// A couple of fields (like `currentPage`) are derived from other fields for
+// convenience, so callers don't have to recompute on every render.
+
 interface WorkspaceState {
   // Auth
   user: User | null;
@@ -59,6 +67,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   deletePage: (pageId) =>
     set((state) => ({
       pages: state.pages.filter((p) => p.id !== pageId),
+      // If the current page is deleted, force the editor back to a safe state.
       currentPageId: state.currentPageId === pageId ? null : state.currentPageId,
     })),
 
@@ -67,6 +76,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setCurrentPageId: (pageId) =>
     set({
       currentPageId: pageId,
+      // Cache the selected page object for quick reads in the UI.
       currentPage: get().pages.find((p) => p.id === pageId) || null,
     }),
   currentPage: null,

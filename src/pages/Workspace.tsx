@@ -26,6 +26,7 @@ export const Workspace: React.FC = () => {
     currentPageId,
     setCurrentPageId,
     addPage,
+    addPageFromTemplate,
     deletePage,
     restorePage,
     permanentlyDeletePage,
@@ -40,7 +41,7 @@ export const Workspace: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Check if user is logged in (Firebase auth)
+  // Check if user is logged in (Firebase auth) - simple check
   useEffect(() => {
     const unsubscribe = subscribeToAuth((user) => {
       if (!user) {
@@ -99,7 +100,13 @@ export const Workspace: React.FC = () => {
             navigate('/app');
           }
         }}
-        onAddPage={() => addPage()}
+        onAddPage={(template) => {
+          if (template) {
+            addPageFromTemplate(template);
+          } else {
+            addPage();
+          }
+        }}
         onDeletePage={(pageId) => {
           if (confirm('Are you sure you want to move this page to trash?')) {
             deletePage(pageId);
@@ -125,6 +132,10 @@ export const Workspace: React.FC = () => {
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
           <WebhookManager />
         </div>
+      ) : isWebhooksView ? (
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
+          <WebhookManager />
+        </div>
       ) : isAnalyticsView ? (
         // Render Analytics Dashboard taking full available width/height
         <div className="flex-1 h-full overflow-hidden relative">
@@ -134,26 +145,28 @@ export const Workspace: React.FC = () => {
         // Standard Page Editor View
         <div className="flex-1 h-full overflow-hidden">
           {currentPage && (
-            <PageEditor
-              page={currentPage}
-              allPages={workspace.pages} // FIX: Pass workspace.pages as allPages
-              onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
-              onUpdateBlock={(blockId, updates) =>
-                currentPageId && updateBlock(currentPageId, blockId, updates)
-              }
-              onDeleteBlock={(blockId) =>
-                currentPageId && deleteBlock(currentPageId, blockId)
-              }
-              onUpdatePageTitle={(title) =>
-                currentPageId && updatePageTitle(currentPageId, title)
-              }
-              onUpdatePageCover={(url) =>
-                currentPageId && updatePageCover(currentPageId, url || null)
-              }
-              onUpdatePage={(pageId, updates) => {
-                updatePageProperties(pageId, updates.properties);
-              }}
-            />
+            <div className="h-full">
+              <PageEditor
+                page={currentPage}
+                allPages={workspace.pages}
+                onAddBlock={(type) => currentPageId && addBlock(currentPageId, type)}
+                onUpdateBlock={(blockId, updates) =>
+                  currentPageId && updateBlock(currentPageId, blockId, updates)
+                }
+                onDeleteBlock={(blockId) =>
+                  currentPageId && deleteBlock(currentPageId, blockId)
+                }
+                onUpdatePageTitle={(title) =>
+                  currentPageId && updatePageTitle(currentPageId, title)
+                }
+                onUpdatePageCover={(url) =>
+                  currentPageId && updatePageCover(currentPageId, url || null)
+                }
+                onUpdatePage={(pageId, updates) => {
+                  updatePageProperties(pageId, updates.properties);
+                }}
+              />
+            </div>
           )}
           {!currentPage && !currentPageId && (
             <div className="flex-1 flex flex-col items-center justify-center h-full text-gray-400">

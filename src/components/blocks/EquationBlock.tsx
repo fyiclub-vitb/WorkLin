@@ -7,18 +7,22 @@ interface EquationBlockProps {
   onUpdate: (updates: Partial<BlockType>) => void;
 }
 
+// This block lets you write mathematical equations using LaTeX syntax
+// For example: E = mc^2 or \frac{a}{b}
 export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [latex, setLatex] = useState(block.text ?? '');
   const [renderedHtml, setRenderedHtml] = useState('');
   const [error, setError] = useState('');
 
-  // Load KaTeX dynamically
+  // Load KaTeX library dynamically when component mounts
   useEffect(() => {
     const loadKaTeX = async () => {
       try {
-        // Dynamically import KaTeX
+        // Import KaTeX library (it's a math rendering library)
         const katex = await import('katex');
+        
+        // Check if the CSS is already loaded, if not add it
         const katexCss = document.querySelector('link[href*="katex"]');
         if (!katexCss) {
           const link = document.createElement('link');
@@ -35,8 +39,8 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
           }
           try {
             const html = katex.default.renderToString(latex, {
-              throwOnError: false,
-              displayMode: true,
+              throwOnError: false, // Don't crash if there's a syntax error
+              displayMode: true, // Make it big and centered
               output: 'html',
               strict: "error", // Enforce strict mode
               trust: false,    // Do not trust user input
@@ -56,6 +60,7 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
     loadKaTeX();
   }, [latex]);
 
+  // Save the equation when user clicks "Save"
   const handleSave = () => {
     onUpdate({ 
       text: latex,
@@ -65,6 +70,7 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
     setIsEditing(false);
   };
 
+  // Cancel editing and restore previous value
   const handleCancel = () => {
     setLatex(block.text || '');
     setIsEditing(false);
@@ -72,11 +78,13 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
 
   return (
     <div className="group relative p-4 border-2 border-purple-200 dark:border-purple-900/50 rounded-lg bg-purple-50/30 dark:bg-purple-900/10">
+      {/* Header with calculator icon and edit/preview toggle */}
       <div className="flex items-center gap-2 mb-2">
         <Calculator size={16} className="text-purple-600 dark:text-purple-400" />
         <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
           LaTeX Equation
         </span>
+        {/* Edit/Preview button shows up on hover */}
         <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => setIsEditing(!isEditing)}
@@ -89,6 +97,7 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
       </div>
 
       {isEditing ? (
+        // Edit mode - show textarea for LaTeX input
         <div className="space-y-2">
           <textarea
             value={latex}
@@ -97,6 +106,7 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
             className="w-full min-h-[80px] px-3 py-2 bg-white dark:bg-gray-900 border border-purple-300 dark:border-purple-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
           />
           {error && (
+            // Show error message if LaTeX syntax is invalid
             <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
               {error}
             </div>
@@ -117,13 +127,16 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
           </div>
         </div>
       ) : (
+        // View mode - show the rendered equation
         <div className="overflow-x-auto">
           {renderedHtml ? (
+            // KaTeX rendered equation - looks nice and mathematical
             <div
               className="katex-rendered text-center py-4"
               dangerouslySetInnerHTML={{ __html: renderedHtml }}
             />
           ) : (
+            // Empty state when no equation is entered yet
             <div className="text-center py-8 text-gray-400 dark:text-gray-600 text-sm">
               Click edit to add a LaTeX equation
             </div>
@@ -131,6 +144,7 @@ export const EquationBlock: React.FC<EquationBlockProps> = ({ block, onUpdate })
         </div>
       )}
 
+      {/* Help text showing example LaTeX syntax */}
       <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
         Examples: x^2 + y^2 = z^2 | \frac{'{a}{b}'} | \sum_{'{i=1}'}^{'{n}'} i
       </div>

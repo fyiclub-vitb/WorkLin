@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "install:render": "npm install --include=optional",
     "build": "tsc && vite build",
+    "build:render": "npm run install:render && npm run build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "vitest",

@@ -3,6 +3,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * Vite Configuration File
+ * 
+ * Vite is the build tool and dev server for this project.
+ * It's way faster than Create React App or webpack because it uses native ES modules.
+ * 
+ * This config file is pretty minimal because Vite has smart defaults.
+ * We only need to specify a few things:
+ * 1. Use the React plugin (for JSX support and Fast Refresh)
+ * 2. Set the dev server port to 3000 instead of Vite's default 5173
+ */
 export default defineConfig({
   plugins: [
     react(),

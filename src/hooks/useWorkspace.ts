@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
+import { Template } from '../types/template';
 import { createVersion } from '../lib/firebase/history';
 import { triggerWebhooks } from '../lib/integrations/webhooks';
 // Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
@@ -101,17 +102,27 @@ export const useWorkspace = () => {
     setCurrentPageId('1');
   };
 
-  const addPage = (title: string = 'Untitled Page', icon: string = '📝') => {
+  const addPage = (title: string = 'Untitled Page', icon: string = '📝', templateBlocks: any[] = []) => {
     const newPage: Page = {
       id: Date.now().toString(),
       title,
       icon,
-      blocks: [],
+      blocks: templateBlocks.map((b, i) => ({
+        id: (Date.now() + i).toString(),
+        type: b.type || 'paragraph',
+        text: b.content || b.text || '',
+        content: b.content || b.text || '',
+        checked: b.checked || false,
+        properties: b.properties || {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'local-user',
+      } as Block)),
       createdAt: new Date(),
       updatedAt: new Date(),
       workspaceId: workspace.id,
     };
-    // FIX 4: Spread ...prev to keep existing workspace properties (id, name, etc.)
+
     setWorkspace((prev) => ({
       ...prev,
       pages: [...prev.pages, newPage],
@@ -229,16 +240,19 @@ export const useWorkspace = () => {
     const oldPage = workspace.pages.find(p => p.id === pageId);
     if (!oldPage) return;
 
+    // Use null instead of undefined for Firestore compatibility
+    const coverValue = cover || null;
+
     setWorkspace((prev) => ({
       ...prev,
       pages: prev.pages.map((p) =>
-        p.id === pageId ? { ...p, cover: cover || undefined, updatedAt: new Date() } : p
+        p.id === pageId ? { ...p, cover: coverValue as any, updatedAt: new Date() } : p
       ),
       updatedAt: new Date()
     }));
 
     // Create version history entry
-    const newPage = { ...oldPage, cover: cover || undefined, updatedAt: new Date() };
+    const newPage = { ...oldPage, cover: coverValue as any, updatedAt: new Date() };
     createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
       console.error('Failed to create version:', err);
     });
@@ -353,16 +367,16 @@ export const useWorkspace = () => {
 
   const currentPage = workspace.pages.find((p) => p.id === currentPageId);
   const updatePageProperties = (pageId: string, properties: any) => {
-  setWorkspace((prev) => ({
-    ...prev,
-    pages: prev.pages.map((p) =>
-      p.id === pageId 
-        ? { ...p, properties, updatedAt: new Date() } 
-        : p
-    ),
-    updatedAt: new Date()
-  }));
-};
+    setWorkspace((prev) => ({
+      ...prev,
+      pages: prev.pages.map((p) =>
+        p.id === pageId
+          ? { ...p, properties, updatedAt: new Date() }
+          : p
+      ),
+      updatedAt: new Date()
+    }));
+  };
 
 
   // Filter out archived pages for main view
@@ -379,6 +393,7 @@ export const useWorkspace = () => {
     restorePage,
     permanentlyDeletePage,
     addPage,
+    addPageFromTemplate,
     deletePage,
     updatePageTitle,
     updatePageIcon,

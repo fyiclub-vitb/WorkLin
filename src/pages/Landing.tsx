@@ -210,7 +210,7 @@ export const Landing: React.FC = () => {
           </div>
         </div>
         <div className="mt-8 text-center text-gray-500 dark:text-gray-500 text-sm">
-          <p>© 2024 WorkLin. Open source under MIT License.</p>
+          <p>© {new Date().getFullYear()} WorkLin. Open source under MIT License.</p>
         </div>
       </footer>
     </div>

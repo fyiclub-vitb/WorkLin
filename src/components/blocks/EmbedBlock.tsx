@@ -18,17 +18,18 @@ interface EmbedData {
   videoId?: string;
 }
 
+// This block lets you embed content from YouTube, Twitter, images, and other websites
 export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
   const [url, setUrl] = useState(block.properties?.url || '');
   const [embedData, setEmbedData] = useState<EmbedData | null>(
     block.properties?.embedData || null
   );
-  const [isEditing, setIsEditing] = useState(!block.properties?.url);
+  const [isEditing, setIsEditing] = useState(!block.properties?.url); // Start in edit mode if no URL
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Load Twitter's widget script when we need to show a tweet
   useEffect(() => {
-    // Load Twitter widget script if needed
     if (embedData?.type === 'twitter' ) {
       const script = document.createElement('script');
       script.src = 'https://platform.twitter.com/widgets.js';
@@ -37,19 +38,22 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
     }
   }, [embedData]);
 
+  // Figure out what kind of URL the user pasted
   const detectEmbedType = (inputUrl: string): EmbedData | null => {
     try {
       const urlObj = new URL(inputUrl.trim());
       
-      // YouTube detection
+      // Check if it's a YouTube video
       if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
         let videoId = '';
         if (urlObj.hostname.includes('youtu.be')) {
+          // Short URL like youtu.be/abc123
           videoId = urlObj.pathname.slice(1).split('?')[0];
         } else if (urlObj.searchParams.has('v')) {
+          // Regular URL with ?v=abc123
           videoId = urlObj.searchParams.get('v') || '';
         } else {
-          // Handle /embed/ URLs
+          // Embed URL like /embed/abc123
           const match = urlObj.pathname.match(/\/embed\/([^/?]+)/);
           if (match) videoId = match[1];
         }
@@ -65,7 +69,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         }
       }
       
-      // Vimeo detection
+      // Check if it's a Vimeo video
       if (urlObj.hostname.includes('vimeo.com')) {
         const videoId = urlObj.pathname.split('/').filter(Boolean)[0];
         if (videoId) {
@@ -78,7 +82,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         }
       }
       
-      // Twitter/X detection
+      // Check if it's a Twitter/X post
       if (urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('x.com')) {
         return {
           url: inputUrl,
@@ -87,7 +91,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         };
       }
 
-      // Image detection - check for image extensions
+      // Check if it's an image based on file extension
       const pathname = urlObj.pathname.toLowerCase();
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(pathname)) {
         return {
@@ -97,7 +101,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         };
       }
 
-      // Check if URL looks like an image by content-type (we'll show a preview attempt)
+      // Check if it's from an image hosting site
       if (urlObj.hostname.includes('imgur.com') || 
           urlObj.hostname.includes('giphy.com') ||
           urlObj.hostname.includes('unsplash.com')) {
@@ -108,7 +112,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         };
       }
 
-      // Generic embed for other URLs
+      // If we can't detect the type, treat it as a generic website embed
       return {
         url: inputUrl,
         type: 'generic',
@@ -119,6 +123,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
     }
   };
 
+  // Process the URL when user clicks "Embed"
   const handleEmbed = () => {
     const trimmedUrl = url.trim();
     
@@ -127,7 +132,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
       return;
     }
 
-    // Add https:// if no protocol specified
+    // Add https:// if user forgot to include it
     let finalUrl = trimmedUrl;
     if (!/^https?:\/\//i.test(trimmedUrl)) {
       finalUrl = 'https://' + trimmedUrl;
@@ -144,6 +149,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
       return;
     }
 
+    // Save the embed data to the block
     setEmbedData(data);
     onUpdate({
       text: finalUrl,
@@ -154,6 +160,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
     setLoading(false);
   };
 
+  // Render the actual embed based on what type it is
   const renderEmbed = () => {
     if (!embedData) return null;
 
@@ -161,6 +168,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
       case 'youtube':
         return (
           <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+            {/* 16:9 aspect ratio iframe for YouTube */}
             <iframe
               src={embedData.embedUrl}
               className="absolute inset-0 w-full h-full"
@@ -175,6 +183,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
       case 'vimeo':
         return (
           <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+            {/* 16:9 aspect ratio iframe for Vimeo */}
             <iframe
               src={embedData.embedUrl}
               className="absolute inset-0 w-full h-full"
@@ -187,6 +196,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         );
 
       case 'twitter':
+        // Twitter embeds don't work in iframes, so we show a preview card instead
         return (
           <div className="flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
             <Twitter size={48} className="mb-4 text-blue-400" />
@@ -217,7 +227,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
               className="w-full h-auto max-h-[600px] object-contain"
               loading="lazy"
               onError={(e) => {
-                // Fallback if image fails to load
+                // If image fails to load, show a fallback message
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 const parent = target.parentElement;
@@ -238,6 +248,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
         );
 
       case 'generic':
+        // For any other website, just show it in an iframe
         return (
           <div className="space-y-3">
             <div className="relative w-full border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
@@ -269,6 +280,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
     }
   };
 
+  // Get the right icon based on embed type
   const getIcon = () => {
     if (!embedData) return <Link size={16} className="text-gray-500" />;
     
@@ -285,6 +297,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
     }
   };
 
+  // Get a nice label for the embed type
   const getTypeLabel = () => {
     if (!embedData) return 'Embed';
     
@@ -306,6 +319,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
 
   return (
     <div className="group relative p-4 border-2 border-blue-200 dark:border-blue-900/50 rounded-lg bg-blue-50/30 dark:bg-blue-900/10">
+      {/* Header with icon and type label */}
       <div className="flex items-center gap-2 mb-3">
         {getIcon()}
         <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
@@ -322,6 +336,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
       </div>
 
       {isEditing ? (
+        // Edit mode - show URL input
         <div className="space-y-3">
           <div className="space-y-2">
             <input
@@ -331,6 +346,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
               placeholder="Paste YouTube, Vimeo, Twitter, image URL, or any web link..."
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-blue-300 dark:border-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               onKeyDown={(e) => {
+                // Allow pressing Enter to embed
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   handleEmbed();
@@ -369,6 +385,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
             )}
           </div>
           
+          {/* Help text showing what's supported */}
           <div className="text-xs text-gray-500 dark:text-gray-500 space-y-1">
             <p className="font-medium">Supported platforms:</p>
             <ul className="list-disc list-inside space-y-0.5 ml-2">
@@ -380,9 +397,11 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
           </div>
         </div>
       ) : embedData ? (
+        // View mode - show the actual embed
         <div className="space-y-2">
           {renderEmbed()}
           <div className="flex items-center justify-between pt-2">
+            {/* Show the URL (truncated if too long) */}
             <a
               href={embedData.url}
               target="_blank"
@@ -404,6 +423,7 @@ export const EmbedBlock: React.FC<EmbedBlockProps> = ({ block, onUpdate }) => {
           </div>
         </div>
       ) : (
+        // Empty state
         <div className="text-center py-8 text-gray-400 dark:text-gray-600 text-sm">
           Click "Change URL" or paste a link to embed content
         </div>
