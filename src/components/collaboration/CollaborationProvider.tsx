@@ -12,6 +12,7 @@ interface CollaborationContextType {
   isReady: boolean;
 }
 
+// Create a context so child components can access the collaboration setup
 const CollaborationContext = createContext<CollaborationContextType>({
   ydoc: null,
   provider: null,
@@ -19,6 +20,7 @@ const CollaborationContext = createContext<CollaborationContextType>({
   isReady: false,
 });
 
+// Hook to easily access collaboration stuff from any component
 export const useCollaboration = () => useContext(CollaborationContext);
 
 interface CollaborationProviderProps {
@@ -26,19 +28,21 @@ interface CollaborationProviderProps {
   children: React.ReactNode;
 }
 
+// This provider sets up real-time collaboration for a page using Yjs
+// Multiple people can edit the same page at once and see each other's changes
 export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
   pageId,
   children,
 }) => {
-  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null); // Yjs document for syncing
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null); // WebSocket connection
   const [isReady, setIsReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Get a persistent color for this session
+  // Pick a random color for this user's cursor (stays the same for the session)
   const userColor = useRef(getRandomUserColor()).current;
 
-  // 1. Listen for Authentication
+  // Step 1: Listen for changes in authentication status
   useEffect(() => {
     const unsubscribe = subscribeToAuth((user) => {
       setCurrentUser(user);
@@ -46,13 +50,14 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
     return () => unsubscribe();
   }, []);
 
-  // 2. Initialize Yjs Provider
+  // Step 2: Set up the Yjs collaboration when pageId changes
   useEffect(() => {
     if (!pageId) return;
 
+    // Create a new Yjs document and WebSocket provider
     const { doc, provider: wsProvider } = createYjsProvider(pageId);
 
-    // Only set up event listeners if provider exists
+    // Log connection status for debugging
     if (wsProvider) {
       wsProvider.on('status', (event: any) => {
         console.log('Collaboration Status:', event.status);
@@ -63,6 +68,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
     setProvider(wsProvider);
     setIsReady(true);
 
+    // Clean up when component unmounts or pageId changes
     return () => {
       if (wsProvider) {
         wsProvider.destroy();
@@ -71,12 +77,15 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
     };
   }, [pageId]);
 
-  // 3. Sync User Awareness (Cursor)
+  // Step 3: Sync user awareness (cursor position, name, color)
+  // This lets other users see where you're editing
   useEffect(() => {
     if (!provider || !currentUser || !provider.awareness) return;
 
+    // Get user's display name or email
     const name = currentUser.displayName || currentUser.email || 'Anonymous';
 
+    // Update awareness with user info
     updateUserAwareness(provider.awareness, {
       name,
       color: userColor
@@ -84,6 +93,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({
 
   }, [provider, currentUser, userColor]);
 
+  // Package up user info to pass down to children
   const userInfo = {
     name: currentUser?.displayName || currentUser?.email || 'Anonymous',
     color: userColor

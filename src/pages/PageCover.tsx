@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { ImageIcon, Upload, X, Loader2, Trash2, Camera } from 'lucide-react';
 // Adjusted path: goes up one level to src, then into lib
-import { uploadImage } from '../lib/storage/cloudinary'; 
+import { uploadImage } from '../lib/storage/cloudinary';
 import { cn } from '../lib/utils';
 // Adjusted path: goes up one level to src, then into components/ui
-import { Button } from '../components/ui/button'; 
+import { Button } from '../components/ui/button';
 // Adjusted path: goes up one level to src, then into hooks
-import { useToast } from '../hooks/use-toast'; 
+import { useToast } from '../hooks/use-toast';
 
 interface PageCoverProps {
   url?: string;
@@ -16,6 +16,9 @@ interface PageCoverProps {
   onUpdate: (url: string | null) => void;
 }
 
+// This component renders the cover image for a page.
+// It allows users to upload, change, or remove the cover image.
+// It handles file validation (size/type) and uploading to Cloudinary.
 export const PageCover: React.FC<PageCoverProps> = ({
   url,
   pageId,
@@ -28,6 +31,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Handle the file selection and upload process.
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -55,7 +59,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
     setIsUploading(true);
     try {
       const { url: downloadURL, error } = await uploadImage(file, workspaceId);
-      
+
       if (error) {
         console.error('Upload error:', error);
         // Check for specific error messages
@@ -67,7 +71,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
         } else if (error.includes('network') || error.includes('fetch')) {
           errorMessage = 'Network error. Please check your internet connection.';
         }
-        
+
         toast({
           title: "Upload failed",
           description: errorMessage,
@@ -75,7 +79,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
         });
         return;
       }
-      
+
       if (downloadURL) {
         onUpdate(downloadURL);
         toast({
@@ -92,12 +96,12 @@ export const PageCover: React.FC<PageCoverProps> = ({
     } catch (error: any) {
       console.error('Upload failed:', error);
       let errorMessage = error?.message || 'Could not upload the image. Please try again.';
-      
+
       // Provide helpful error messages
       if (errorMessage.includes('Cloudinary')) {
         errorMessage = 'Cloudinary not configured. Please set up Cloudinary in your .env file.';
       }
-      
+
       toast({
         title: "Upload failed",
         description: errorMessage,
@@ -122,7 +126,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
 
   if (!url) {
     return (
-      <div 
+      <div
         className="group relative"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -135,7 +139,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
           onChange={handleUpload}
           disabled={!editable || isUploading}
         />
-        
+
         {editable && (
           <Button
             variant="secondary"
@@ -163,7 +167,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
   }
 
   return (
-    <div 
+    <div
       className="group relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -198,7 +202,7 @@ export const PageCover: React.FC<PageCoverProps> = ({
               </>
             )}
           </Button>
-          
+
           <Button
             variant="secondary"
             size="sm"

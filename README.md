@@ -72,6 +72,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 Email: demo@worklin.com
 Password: demo123
+
+**Test User Credentials:**
+Email: test@worklin.local
+Password: Password123!
 ```
 
 **Quick Start:**
@@ -127,22 +131,36 @@ See [MIGRATE_TO_CLOUDINARY.md](MIGRATE_TO_CLOUDINARY.md) for detailed setup inst
 For real-time collaboration features, deploy the Yjs server on Render (free tier):
 
 1. Sign up at [https://render.com](https://render.com) (use GitHub to sign in)
-2. Create a new Web Service
-3. Connect your GitHub repository
-4. Configure:
-   - **Root Directory**: `yjs-server`
+2. Create a new **Web Service**
+3. Connect your GitHub repository: `https://github.com/fyiclub-vitb/WorkLin`
+4. Configure the service settings:
+   - **Name**: `worklin-yjs-server` (or any name you prefer)
+   - **Region**: Choose closest to you (e.g., Oregon, Frankfurt)
+   - **Branch**: `main`
+   - **Root Directory**: `yjs-server` ⚠️ **Important**: Must be `yjs-server`, not `src`
    - **Build Command**: `npm install`
-   - **Start Command**: `node server.js`
-   - **Plan**: Free
-5. Get your WebSocket URL (e.g., `wss://your-app.onrender.com`)
-6. Add to `.env`:
+   - **Start Command**: `npm start` (or `node server.js`)
+   - **Instance Type**: **Free**
+5. Click **Create Web Service** and wait for deployment (2-5 minutes)
+6. Once deployed, get your WebSocket URL:
+   - Your service URL will be: `https://worklin-yjs-server.onrender.com`
+   - **WebSocket URL**: `wss://worklin-yjs-server.onrender.com` (use `wss://` for secure WebSocket)
+7. Add to your `.env` file:
    ```env
-   VITE_YJS_WEBSOCKET_URL=wss://your-app.onrender.com
+   VITE_YJS_WEBSOCKET_URL=wss://worklin-yjs-server.onrender.com
    ```
+   (Replace with your actual Render service URL)
 
-**Note**: Collaboration is optional. The app works perfectly without it!
+**Important Notes**:
+- ✅ Collaboration is optional. The app works perfectly without it!
+- ✅ Use `wss://` (secure WebSocket) not `ws://` for production
+- ✅ The server automatically uses the PORT environment variable set by Render
+- ✅ Free tier spins down after 15 minutes of inactivity (takes ~30 seconds to wake up)
 
-See [YJS_SERVER_SETUP.md](YJS_SERVER_SETUP.md) for detailed setup instructions.
+**For Production Deployment**:
+- Add `VITE_YJS_WEBSOCKET_URL` to your frontend hosting platform's environment variables:
+  - **Vercel**: Settings → Environment Variables
+  - **Netlify**: Site settings → Environment variables
 
 #### 4. Google Gemini API Setup (Optional - For AI Features)
 
@@ -318,13 +336,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Login page with demo credentials
 - [x] Responsive design (mobile-friendly)
 - [x] Dark mode support
-- [ ] Real-time collaboration (Yjs + Render) - See Issue #21
-- [ ] AI writing assistant - See Issue #23
-- [ ] Database views - See Issue #14
-- [ ] Comments system - See Issue #12
-- [ ] Page templates - See Issue #13
-- [ ] Advanced search - See Issue #8, #19
-- [ ] Export functionality - See Issue #16
+- [X] Real-time collaboration (Yjs + Render) - See Issue #21
+- [X] AI writing assistant - See Issue #23
+- [X] Database views - See Issue #14
+- [X] Comments system - See Issue #12
+- [X] Page templates - See Issue #13
+- [X] Advanced search - See Issue #8, #19
+- [X] Export functionality - See Issue #16
 - [ ] Mobile app/PWA - See Issue #25
 
 **Check [GITHUB_ISSUES.md](GITHUB_ISSUES.md) for 30 open issues ready for contributors!**

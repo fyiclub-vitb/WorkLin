@@ -44,13 +44,19 @@ export const uploadFile = async (
       formData.append('public_id', options.publicId);
     }
     
-    if (options?.resourceType) {
-      formData.append('resource_type', options.resourceType);
+    // Defensive: ensure we do NOT send a 'transformation' parameter in the form data.
+    // Cloudinary will return 400 for unsigned uploads if 'transformation' is present.
+    if (formData.has('transformation')) {
+      formData.delete('transformation');
     }
-
-    // Add transformation if provided (e.g., 'w_800,h_600,c_fill,q_auto')
+    // Prevent resource_type being incorrectly set by third-party code
+    if (formData.has('resource_type')) {
+      formData.delete('resource_type');
+    }
     if (options?.transformation) {
-      formData.append('transformation', options.transformation);
+      // We will apply transformation via URL after upload (unsigned uploads disallow sending it).
+      // eslint-disable-next-line no-console
+      console.warn('Cloudinary: not sending transformation in upload request for unsigned preset; applying via URL after upload.');
     }
 
     // Upload to Cloudinary
@@ -67,14 +73,23 @@ export const uploadFile = async (
     if (!response.ok) {
       let errorMessage = 'Upload failed';
       try {
-        const error = await response.json();
-        errorMessage = error.error?.message || error.message || 'Upload failed';
+        // try JSON first, fallback to text so we see full server message
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.error?.message || error.message || JSON.stringify(error) || 'Upload failed';
+        } else {
+          const text = await response.text();
+          errorMessage = text || `Upload failed with status ${response.status}`;
+        }
         
         // Provide helpful error messages
         if (errorMessage.includes('Invalid upload preset')) {
           errorMessage = 'Invalid upload preset. Please check VITE_CLOUDINARY_UPLOAD_PRESET in .env';
         } else if (errorMessage.includes('Unauthorized')) {
           errorMessage = 'Unauthorized. Please check your Cloudinary credentials.';
+        } else if (errorMessage.includes('Transformation parameter is not allowed')) {
+          errorMessage = 'Cloudinary rejected a transformation parameter on an unsigned upload. Remove transformation from upload or use signed uploads.';
         }
       } catch (parseError) {
         errorMessage = `Upload failed with status ${response.status}`;
@@ -83,7 +98,15 @@ export const uploadFile = async (
     }
 
     const data = await response.json();
-    return { url: data.secure_url, error: null };
+    let url = data.secure_url;
+    
+    // Apply transformation via URL if provided (since we can't use transformation param with unsigned uploads)
+    if (options?.transformation && url) {
+      // Insert transformation into URL: replace /upload/ with /upload/{transformation}/
+      url = url.replace('/upload/', `/upload/${options.transformation}/`);
+    }
+    
+    return { url, error: null };
   } catch (error: any) {
     console.error('Cloudinary upload error:', error);
     let errorMessage = error.message || 'Upload failed';
