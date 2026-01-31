@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback, ReactNode } from 'react';
+// This hook manages the state and available commands for the Command Palette (Cmd+K).
+// It defines the list of actions users can perform such as navigation, creating items, etc.
 import { CommandItem } from '../components/CommandPalette';
 import { Plus, Trash2, Copy, Settings, LogOut, Search, Eye, Table, Grid3x3, Calendar } from 'lucide-react';
 
-// Icon components mapping
+// Local mapping of string identifiers to actual icon components
+// This makes it easier to reference icons by name in the command objects.
 const iconMap: Record<string, ReactNode> = {
   plus: <Plus size={16} />,
   search: <Search size={16} />,
@@ -20,7 +23,9 @@ export const useCommandPalette = (onCreatePage?: () => void) => {
   const [isOpen, setIsOpen] = useState(false);
   const [commands, setCommands] = useState<CommandItem[]>([]);
 
-  // Initialize commands
+  // Initialize the list of available commands.
+  // We use useEffect here because some commands might depend on props (like onCreatePage)
+  // or other external state that updates over time.
   useEffect(() => {
     const initialCommands: CommandItem[] = [
       // Page commands
