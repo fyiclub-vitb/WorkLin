@@ -12,9 +12,13 @@ import { Toaster } from '../components/ui/toaster';
 import { PageHeader } from '../components/PageHeader';
 import { subscribeToAuth } from '../lib/firebase/auth';
 
+// The Workspace component is the core application layout.
+// It includes the Sidebar for navigation and the Main Content area which switches
+// between the Page Editor, Search, Analytics, etc., based on the current URL.
 export const Workspace: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  // Determine which view to show based on the current route
   const isSearchView = location.pathname === '/app/search';
   const isAnalyticsView = location.pathname === '/app/analytics';
   const isWebhooksView = location.pathname === '/app/webhooks';
@@ -41,7 +45,8 @@ export const Workspace: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Check if user is logged in (Firebase auth) - simple check
+  // Check if user is logged in (Firebase auth).
+  // If not, redirect to the login page.
   useEffect(() => {
     const unsubscribe = subscribeToAuth((user) => {
       if (!user) {
@@ -76,7 +81,7 @@ export const Workspace: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-white dark:bg-[#1e1e1e] overflow-hidden">
-      {/* Mobile Menu Button */}
+      {/* Mobile Menu Button: visible only on small screens */}
       <button
         onClick={() => setSidebarOpen(true)}
         className="fixed top-4 left-4 z-30 lg:hidden p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -123,7 +128,7 @@ export const Workspace: React.FC = () => {
         setSidebarOpen={setSidebarOpen}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content Area: Switches content based on state/route */}
       {isSearchView ? (
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
           <AdvancedSearch />
