@@ -163,7 +163,7 @@ export const Landing: React.FC = () => {
                 <span className="text-[10px] font-mono text-slate-400 dark:text-slate-600 uppercase tracking-widest">System Ready</span>
               </div>
               <div className="absolute top-2 right-2">
-                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-600 uppercase tracking-widest">v1.0.4-stable</span>
+                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-600 uppercase tracking-widest">v0.0.1-stable</span>
               </div>
               <div className="absolute bottom-2 left-2">
                 <span className="text-[10px] font-mono text-slate-400 dark:text-slate-600 uppercase tracking-widest">Build: 2024.01</span>
