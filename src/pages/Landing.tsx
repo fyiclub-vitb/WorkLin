@@ -5,12 +5,14 @@ import { motion } from 'framer-motion';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { Logo, LogoIcon } from '../components/Logo';
 
+// The Landing page is the first thing users see. 
+// It features a hero section with a call to action, feature highlights, and a footer.
 export const Landing: React.FC = () => {
   const { isDark, toggleDarkMode } = useDarkMode();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Header */}
+      {/* Header: Contains Logo, Dark Mode toggle, GitHub link, and Login button */}
       <header className="container mx-auto px-6 py-6 flex items-center justify-between backdrop-blur-sm bg-white/80 dark:bg-slate-900/80 sticky top-0 z-50 border-b border-gray-200/50 dark:border-slate-800/50">
         <Logo size={44} />
         <div className="flex items-center gap-3">
@@ -39,7 +41,7 @@ export const Landing: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section: The main headline and primary call-to-action */}
       <section className="container mx-auto px-6 py-24 md:py-32 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -82,7 +84,7 @@ export const Landing: React.FC = () => {
         </motion.div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section: Highlights key capabilities like 'Lightning Fast' and 'Privacy First' */}
       <section className="container mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -147,7 +149,7 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Open Source Section */}
+      {/* Open Source Section: Emphasizes the open-source nature of the project */}
       <section className="container mx-auto px-6 py-20">
         <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-12 md:p-16 text-center text-white overflow-hidden">
           <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
