@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+// This is the main hook for managing the workspace state (pages, blocks, etc.).
+// It handles loading/saving to localStorage and provides functions for all CRUD operations.
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
 import { Template } from '../types/template';
 import { createVersion } from '../lib/firebase/history';
@@ -8,6 +10,8 @@ import { triggerWebhooks } from '../lib/integrations/webhooks';
 const STORAGE_KEY = 'worklin-workspace';
 
 export const useWorkspace = () => {
+  // Initialize the workspace state.
+  // We start with a default structure including an ID, name, and empty arrays for members and pages.
   // FIX 1: Initialize with a complete Workspace object, not just { pages: [] }
   const [workspace, setWorkspace] = useState<Workspace>({
     id: 'default',
@@ -21,15 +25,17 @@ export const useWorkspace = () => {
 
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
 
-  // Load from localStorage on mount
+  // Load data from localStorage when the component mounts.
+  // We need to carefully parse the JSON and convert date strings back into Date objects.
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
 
-        // FIX 2: Reconstruct the full object and handle date conversions for the root object too
-        // We use spread (...parsed) to keep id, name, etc., then overwrite dates and pages
+        // FIX 2: Reconstruct the full object and handle date conversions for the root object too.
+        // We use spread (...parsed) to keep id, name, etc., then overwrite dates with new Date().
+        // We also loop through pages to fix their date fields.
         const workspaceWithDates: Workspace = {
           ...parsed,
           createdAt: new Date(parsed.createdAt || Date.now()),
@@ -46,6 +52,8 @@ export const useWorkspace = () => {
           })),
         };
         setWorkspace(workspaceWithDates);
+
+        // If we have pages, set the first one as active
         if (workspaceWithDates.pages.length > 0) {
           // Only set if not already set (or purely reset)
           setCurrentPageId(workspaceWithDates.pages[0].id);
@@ -55,18 +63,22 @@ export const useWorkspace = () => {
         initializeDefault();
       }
     } else {
+      // If no data exists, load the default template
       initializeDefault();
     }
   }, []);
 
-  // Auto-save to localStorage
-  // Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
+  // Auto-save the workspace state to localStorage whenever it changes.
+  // This ensures user data persists across refreshes.
+  // Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed here.
   useEffect(() => {
     if (workspace.pages.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
     }
   }, [workspace]);
 
+  // Sets up the default workspace state if nothing is found in storage.
+  // Creates a welcome page with some introductory blocks.
   const initializeDefault = () => {
     const defaultPage: Page = {
       id: '1',
@@ -93,7 +105,7 @@ export const useWorkspace = () => {
       updatedAt: new Date(),
     };
 
-    // Auto-seed block removed as per user request
+    // Auto-seed block removed as per user request (legacy cleanup)
     if (localStorage.getItem('worklin_local_seeded')) {
       localStorage.removeItem('worklin_local_seeded');
     }
