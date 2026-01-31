@@ -11,6 +11,9 @@ import { auth } from '../lib/firebase/config';
 import { ShareDialog } from '../components/workspace/ShareDialog';
 import { MembersList } from '../components/workspace/MembersList';
 
+// The Settings page allows users to configure their workspace and account.
+// It currently handles local preferences like Dark Mode and Notifications,
+// and effectively serves as a dashboard for workspace styling and account management.
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -29,6 +32,8 @@ export const Settings: React.FC = () => {
   const workspaceOwnerId = 'local-user'; // Replace with actual owner ID
   const workspaceName = 'My Workspace'; // Replace with actual workspace name
 
+  // Save current settings to localStorage.
+  // In a real production app, this would likely also sync with the backend.
   const handleSave = () => {
     // Save settings to localStorage or backend
     localStorage.setItem('worklin-settings', JSON.stringify({
@@ -49,6 +54,7 @@ export const Settings: React.FC = () => {
     setMembersRefreshTrigger(prev => prev + 1);
   };
 
+  // Handle user logout using Firebase Auth
   const handleLogout = async () => {
     try {
       await signOut(auth);
