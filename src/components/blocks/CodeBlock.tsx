@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { Block as BlockType } from '../../types/workspace';
 import { Code, Copy, Check } from 'lucide-react';
 import Prism from 'prismjs';
@@ -51,10 +52,9 @@ const LANGUAGES = [
 
 // This component shows code with syntax highlighting, line numbers, and copy button
 export const CodeBlock: React.FC<CodeBlockProps> = ({ block, onUpdate }) => {
-  // Keep track of the code content and selected language
-  const [code, setCode] = useState(block.text || '');
-  const [language, setLanguage] = useState(block.properties?.language || 'javascript');
-  const [copied, setCopied] = useState(false); // For the "Copied!" feedback
+  const [code, setCode] = useState(block.text ?? '');
+  const [language, setLanguage] = useState(block.properties?.language ?? 'javascript');
+  const [copied, setCopied] = useState(false);
   const [highlightedCode, setHighlightedCode] = useState('');
 
   // Re-highlight the code whenever it changes or language changes
@@ -66,15 +66,16 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ block, onUpdate }) => {
         Prism.languages[language],
         language
       );
-      setHighlightedCode(highlighted);
+      // Sanitize highlighted HTML to prevent XSS
+      setHighlightedCode(DOMPurify.sanitize(highlighted));
     } else {
-      // No highlighting available for this language
-      setHighlightedCode(code);
+      setHighlightedCode(code ?? '');
     }
   }, [code, language]);
 
   // Update the block whenever code changes
   const handleCodeChange = (newCode: string) => {
+    // Input validation: prevent empty code
     setCode(newCode);
     onUpdate({
       text: newCode,
@@ -99,6 +100,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ block, onUpdate }) => {
       // Reset the "Copied!" message after 2 seconds
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
+      setCopied(false);
+      alert('Copy failed. Please try manually.');
       console.error('Failed to copy code:', err);
     }
   };
@@ -148,7 +151,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ block, onUpdate }) => {
         {/* Line numbers on the left */}
         <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#1e1e1e] border-r border-gray-700 select-none overflow-hidden">
           <div className="py-3 px-2 text-right text-xs text-gray-600 font-mono leading-6">
-            {code.split('\n').map((_, i) => (
+            {(code ?? '').split('\n').map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
           </div>

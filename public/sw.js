@@ -1,7 +1,6 @@
-// Service Worker for offline caching and progressive web app functionality
-// This allows WorkLin to work offline by caching important files
+// VitePWA injectManifest placeholder
+self.__WB_MANIFEST;
 
-// Version name for the cache - change this when you want to force a cache update
 const CACHE_NAME = 'worklin-v1';
 
 // List of files to cache when the service worker is installed

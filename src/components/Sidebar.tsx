@@ -344,49 +344,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {searchQuery ? 'Search Results' : 'Pages'}
                 </div>
                 {filteredPages.length === 0 ? (
-                  <div className="text-center py-12 px-2">
-                    {searchQuery ? (
-                      <EmptyState
-                        variant="compact"
-                        title="No pages found"
-                        description="Try a different search."
-                        actionLabel="Clear search"
-                        onAction={() => {
-                          setSearchQuery('');
-                          inputRef.current?.focus();
-                        }}
-                        icon={<FileText size={20} />}
-                      />
-                    ) : (
-                      <EmptyState
-                        variant="compact"
-                        title="No pages yet"
-                        description="Create your first page to get started."
-                        actionLabel="New Page"
-                        onAction={() => handleCreatePage()}
-                        icon={<FileText size={20} />}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {filteredPages.map((page) => (
-                      <motion.div
-                        key={page.id}
-                        whileHover={{ x: 2 }}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${currentPageId === page.id
-                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                          }`}
-                        onClick={() => onSelectPage(page.id)}
-                      >
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <IconPicker onChange={(icon) => onUpdatePage?.(page.id, icon)}>
-                            <span className="text-base flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-0.5 transition-colors cursor-pointer">
-                              {page.icon}
-                            </span>
-                          </IconPicker>
-                        </div>
+                  searchQuery ? (
+                    <EmptyState
+                      variant="compact"
+                      title="No pages found"
+                      description="Try a different search."
+                      actionLabel="Clear search"
+                      onAction={() => {
+                        setSearchQuery('');
+                        inputRef.current?.focus();
+                      }}
+                      icon={<FileText size={20} />}
+                    />
+                  ) : (
+                    <EmptyState
+                      variant="compact"
+                      title="No pages yet"
+                      description="Create your first page to get started."
+                      actionLabel="New Page"
+                      onAction={handleAddPage}
+                      icon={<FileText size={20} />}
+                    />
+                  )
+            ) : (
+              <div className="space-y-1">
+                {filteredPages.map((page) => (
+                  <motion.div
+                    key={page.id}
+                    whileHover={{ x: 2 }}
+                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${currentPageId === page.id
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                      }`}
+                    onClick={() => onSelectPage(page.id)}
+                  >
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <IconPicker onChange={(icon) => onUpdatePage?.(page.id, icon)}>
+                        <span className="text-base flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-0.5 transition-colors cursor-pointer">
+                          {page.icon}
+                        </span>
+                      </IconPicker>
+                    </div>
 
                         <span className="flex-1 text-sm font-medium truncate">
                           <HighlightedText text={page.title} highlight={searchQuery} />

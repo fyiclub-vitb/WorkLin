@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { PageEditor } from '../components/PageEditor';
-import { AdvancedSearch } from '../components/search/AdvancedSearch';
+import { FullTextSearch } from '../components/search/FullTextSearch';
 import { AnalyticsDashboard } from '../components/analytics/Dashboard';
 import { WebhookManager } from '../components/integrations/WebhookManager';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -131,7 +131,11 @@ export const Workspace: React.FC = () => {
       {/* Main Content Area: Switches content based on state/route */}
       {isSearchView ? (
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
-          <AdvancedSearch />
+          <FullTextSearch />
+        </div>
+      ) : isWebhooksView ? (
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
+          <WebhookManager />
         </div>
       ) : isWebhooksView ? (
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#1e1e1e] p-8">
