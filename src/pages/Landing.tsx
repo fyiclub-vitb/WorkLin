@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Zap, Shield, Users, Code, Github, Moon, Sun } from 'lucide-react';
+import { ArrowRight, Zap, Shield, Users, Code, Github, Moon, Sun, Twitter, Linkedin, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { Logo, LogoIcon } from '../components/Logo';
@@ -188,29 +188,88 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="container mx-auto px-6 py-12 border-t border-gray-200 dark:border-gray-800">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <Logo size={32} />
-          <div className="flex gap-6 text-gray-600 dark:text-gray-400">
-            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-              Documentation
-            </a>
-            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-              Issues
-            </a>
-            <a
-              href="https://github.com/fyiclub-vitb/WorkLin"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1"
-            >
-              <Github size={16} />
-              GitHub
-            </a>
+      <footer className="container mx-auto px-6 py-16 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900/50">
+        <div className="grid md:grid-cols-4 gap-8 mb-8">
+          {/* Company Info */}
+          <div className="md:col-span-1">
+            <Logo size={40} className="mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+              WorkLin is an open-source Notion alternative for creating beautiful workspaces and collaborating with your team.
+            </p>
+          </div>
+
+          {/* Product Links */}
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Product</h3>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Features</a></li>
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Templates</a></li>
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Integrations</a></li>
+            </ul>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Resources</h3>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Documentation</a></li>
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">API Reference</a></li>
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Help Center</a></li>
+              <li><a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Community</a></li>
+            </ul>
+          </div>
+
+          {/* Connect */}
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Connect</h3>
+            <div className="flex gap-4 mb-4">
+              <a
+                href="https://github.com/fyiclub-vitb/WorkLin"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                aria-label="GitHub"
+              >
+                <Github size={20} />
+              </a>
+              <a
+                href="#"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                aria-label="Twitter"
+              >
+                <Twitter size={20} />
+              </a>
+              <a
+                href="#"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                aria-label="LinkedIn"
+              >
+                <Linkedin size={20} />
+              </a>
+              <a
+                href="mailto:contact@worklin.dev"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                aria-label="Email"
+              >
+                <Mail size={20} />
+              </a>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Stay updated with our newsletter
+            </p>
           </div>
         </div>
-        <div className="mt-8 text-center text-gray-500 dark:text-gray-500 text-sm">
-          <p>© 2024 WorkLin. Open source under MIT License.</p>
+
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-gray-500 dark:text-gray-500 text-sm">
+            © 2024 WorkLin. Open source under MIT License.
+          </p>
+          <div className="flex gap-6 text-sm text-gray-600 dark:text-gray-400 mt-4 md:mt-0">
+            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Cookie Policy</a>
+          </div>
         </div>
       </footer>
     </div>
