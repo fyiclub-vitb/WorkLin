@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: worklin
+    env: node
+    buildCommand: npm install --include=optional && npm run build
+    startCommand: npx serve -s dist -l 3000
+    envVars:
+      - key: NODE_ENV
+        value: production

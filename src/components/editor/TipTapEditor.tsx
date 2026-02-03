@@ -19,6 +19,8 @@ interface TipTapEditorProps {
   editable?: boolean;
 }
 
+// This is our rich text editor - handles formatting, links, images, etc.
+// It also supports real-time collaboration if Yjs is connected
 export const TipTapEditor: React.FC<TipTapEditorProps> = ({
   block,
   onUpdate,
@@ -28,11 +30,11 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
 }) => {
   const { ydoc, provider, isReady } = useCollaboration();
 
-  // Define basic extensions
+  // Set up all the editor features we want
   const extensions = [
     StarterKit.configure({
-      history: false, // Disable local history so Yjs can handle it
-      heading: { levels: [1, 2, 3] },
+      history: false, // Let Yjs handle undo/redo for collaboration
+      heading: { levels: [1, 2, 3] }, // Support H1, H2, H3
       bulletList: { keepMarks: true, keepAttributes: false },
       orderedList: { keepMarks: true, keepAttributes: false },
     }),
@@ -51,22 +53,22 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
     }),
   ];
 
-  // Only add collaboration extensions if we are connected
+  // Add collaboration features if we're connected to Yjs
   if (isReady && ydoc && provider) {
     extensions.push(
       Collaboration.configure({
         document: ydoc,
-        field: block.id,
+        field: block.id, // Each block gets its own Yjs field
       }) as any, 
       CollaborationCursor.configure({
-        provider: provider,
+        provider: provider, // Show other people's cursors
       }) as any
     );
   }
 
   const editor = useEditor({
     extensions,
-    // If collaboration is on, Yjs provides content. Otherwise, fallback to block content.
+    // If Yjs is connected, it provides the content. Otherwise use block content.
     content: (isReady && ydoc) ? null : (block.content || block.text || ''),
     editable,
     onUpdate: ({ editor }) => {
@@ -82,7 +84,7 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
         ),
       },
     },
-  }, [isReady, ydoc, provider]); // Re-initialize if connection status changes
+  }, [isReady, ydoc, provider]); // Re-create editor if connection changes
 
   if (!editor) {
     return null;
@@ -90,7 +92,7 @@ export const TipTapEditor: React.FC<TipTapEditorProps> = ({
 
   return (
     <div className="w-full relative group">
-      {/* Small indicator dot to show this block is live */}
+      {/* Small green dot shows this block has real-time sync */}
       {isReady && (
         <div className="absolute -left-3 top-1.5 w-1.5 h-1.5 rounded-full bg-green-500 opacity-0 group-hover:opacity-50 transition-opacity" title="Real-time connected" />
       )}

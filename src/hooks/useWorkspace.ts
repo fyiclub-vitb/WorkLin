@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
+// This is the main hook for managing the workspace state (pages, blocks, etc.).
+// It handles loading/saving to localStorage and provides functions for all CRUD operations.
 import { Workspace, Page, Block, BlockType } from '../types/workspace';
+import { Template } from '../types/template';
 import { createVersion } from '../lib/firebase/history';
+import { triggerWebhooks } from '../lib/integrations/webhooks';
+// Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed
 
 const STORAGE_KEY = 'worklin-workspace';
 
 export const useWorkspace = () => {
+  // Initialize the workspace state.
+  // We start with a default structure including an ID, name, and empty arrays for members and pages.
   // FIX 1: Initialize with a complete Workspace object, not just { pages: [] }
   const [workspace, setWorkspace] = useState<Workspace>({
     id: 'default',
@@ -18,15 +25,17 @@ export const useWorkspace = () => {
 
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
 
-  // Load from localStorage on mount
+  // Load data from localStorage when the component mounts.
+  // We need to carefully parse the JSON and convert date strings back into Date objects.
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
 
-        // FIX 2: Reconstruct the full object and handle date conversions for the root object too
-        // We use spread (...parsed) to keep id, name, etc., then overwrite dates and pages
+        // FIX 2: Reconstruct the full object and handle date conversions for the root object too.
+        // We use spread (...parsed) to keep id, name, etc., then overwrite dates with new Date().
+        // We also loop through pages to fix their date fields.
         const workspaceWithDates: Workspace = {
           ...parsed,
           createdAt: new Date(parsed.createdAt || Date.now()),
@@ -43,6 +52,8 @@ export const useWorkspace = () => {
           })),
         };
         setWorkspace(workspaceWithDates);
+
+        // If we have pages, set the first one as active
         if (workspaceWithDates.pages.length > 0) {
           // Only set if not already set (or purely reset)
           setCurrentPageId(workspaceWithDates.pages[0].id);
@@ -52,17 +63,22 @@ export const useWorkspace = () => {
         initializeDefault();
       }
     } else {
+      // If no data exists, load the default template
       initializeDefault();
     }
   }, []);
 
-  // Auto-save to localStorage
+  // Auto-save the workspace state to localStorage whenever it changes.
+  // This ensures user data persists across refreshes.
+  // Note: Search indexing is now client-side only (MiniSearch) - no Firestore writes needed here.
   useEffect(() => {
     if (workspace.pages.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
     }
   }, [workspace]);
 
+  // Sets up the default workspace state if nothing is found in storage.
+  // Creates a welcome page with some introductory blocks.
   const initializeDefault = () => {
     const defaultPage: Page = {
       id: '1',
@@ -89,7 +105,7 @@ export const useWorkspace = () => {
       updatedAt: new Date(),
     };
 
-    // Auto-seed block removed as per user request
+    // Auto-seed block removed as per user request (legacy cleanup)
     if (localStorage.getItem('worklin_local_seeded')) {
       localStorage.removeItem('worklin_local_seeded');
     }
@@ -98,25 +114,55 @@ export const useWorkspace = () => {
     setCurrentPageId('1');
   };
 
-  const addPage = (title: string = 'Untitled Page', icon: string = '📝') => {
+  const addPage = (title: string = 'Untitled Page', icon: string = '📝', templateBlocks: any[] = []) => {
     const newPage: Page = {
       id: Date.now().toString(),
       title,
       icon,
-      blocks: [],
+      blocks: templateBlocks.map((b, i) => ({
+        id: (Date.now() + i).toString(),
+        type: b.type || 'paragraph',
+        text: b.content || b.text || '',
+        content: b.content || b.text || '',
+        checked: b.checked || false,
+        properties: b.properties || {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'local-user',
+      } as Block)),
       createdAt: new Date(),
       updatedAt: new Date(),
+      workspaceId: workspace.id,
     };
-    // FIX 4: Spread ...prev to keep existing workspace properties (id, name, etc.)
+
     setWorkspace((prev) => ({
       ...prev,
       pages: [...prev.pages, newPage],
       updatedAt: new Date()
     }));
     setCurrentPageId(newPage.id);
+
+    // Trigger webhook for page creation
+    if (workspace.id) {
+      triggerWebhooks(workspace.id, 'page.created', {
+        event: 'page.created',
+        workspaceId: workspace.id,
+        pageId: newPage.id,
+        timestamp: Date.now(),
+        data: newPage,
+      }).catch(err => console.error('[useWorkspace] Error triggering webhook:', err));
+    }
+  };
+
+  const addPageFromTemplate = (template: Template) => {
+    if (template.content) {
+      addPage(template.content.title, template.icon, template.content.blocks);
+    }
   };
 
   const deletePage = (pageId: string) => {
+    const page = workspace.pages.find(p => p.id === pageId);
+
     // Mark as archived instead of deleting
     setWorkspace((prev) => ({
       ...prev,
@@ -129,6 +175,18 @@ export const useWorkspace = () => {
     if (currentPageId === pageId) {
       const remaining = workspace.pages.filter((p) => p.id !== pageId && !p.isArchived);
       setCurrentPageId(remaining.length > 0 ? remaining[0].id : null);
+    }
+
+    // Trigger webhook for page deletion
+    if (workspace.id && page) {
+      console.log('[useWorkspace] Triggering webhook for page.deleted', { pageId: pageId, workspaceId: workspace.id });
+      triggerWebhooks(workspace.id, 'page.deleted', {
+        event: 'page.deleted',
+        workspaceId: workspace.id,
+        pageId: pageId,
+        timestamp: Date.now(),
+        data: page,
+      }).catch(err => console.error('[useWorkspace] Error triggering webhook:', err));
     }
   };
 
@@ -171,6 +229,18 @@ export const useWorkspace = () => {
     createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
       console.error('Failed to create version:', err);
     });
+
+    // Trigger webhook for page update
+    if (workspace.id) {
+      console.log('[useWorkspace] Triggering webhook for page.updated', { pageId: pageId, workspaceId: workspace.id });
+      triggerWebhooks(workspace.id, 'page.updated', {
+        event: 'page.updated',
+        workspaceId: workspace.id,
+        pageId: pageId,
+        timestamp: Date.now(),
+        data: newPage,
+      }).catch(err => console.error('[useWorkspace] Error triggering webhook:', err));
+    }
   };
 
   const updatePageIcon = (pageId: string, icon: string) => {
@@ -187,50 +257,68 @@ export const useWorkspace = () => {
     const oldPage = workspace.pages.find(p => p.id === pageId);
     if (!oldPage) return;
 
+    // Use null instead of undefined for Firestore compatibility
+    const coverValue = cover || null;
+
     setWorkspace((prev) => ({
       ...prev,
       pages: prev.pages.map((p) =>
-        p.id === pageId ? { ...p, cover: cover || undefined, updatedAt: new Date() } : p
+        p.id === pageId ? { ...p, cover: coverValue as any, updatedAt: new Date() } : p
       ),
       updatedAt: new Date()
     }));
 
     // Create version history entry
-    const newPage = { ...oldPage, cover: cover || undefined, updatedAt: new Date() };
+    const newPage = { ...oldPage, cover: coverValue as any, updatedAt: new Date() };
     createVersion(pageId, oldPage, newPage, 'local-user', 'Local User').catch(err => {
       console.error('Failed to create version:', err);
     });
   };
 
   const addBlock = (pageId: string, type: BlockType = 'paragraph') => {
+    const newBlock: Block = {
+      id: Date.now().toString(),
+      type,
+      text: '',
+      content: '',
+      checked: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'local-user',
+    };
+
     setWorkspace((prev) => ({
       ...prev, // Spread prev
       pages: prev.pages.map((p) =>
         p.id === pageId
           ? {
             ...p,
-            blocks: [
-              ...p.blocks,
-              {
-                id: Date.now().toString(),
-                type,
-                text: '',
-                content: '',
-                checked: false,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                createdBy: 'local-user',
-              },
-            ],
+            blocks: [...p.blocks, newBlock],
             updatedAt: new Date(),
           }
           : p
       ),
       updatedAt: new Date()
     }));
+
+    // Trigger webhook for block creation
+    if (workspace.id) {
+      console.log('[useWorkspace] Triggering webhook for block.created', { pageId: pageId, blockId: newBlock.id, workspaceId: workspace.id });
+      triggerWebhooks(workspace.id, 'block.created', {
+        event: 'block.created',
+        workspaceId: workspace.id,
+        pageId: pageId,
+        blockId: newBlock.id,
+        timestamp: Date.now(),
+        data: newBlock,
+      }).catch(err => console.error('[useWorkspace] Error triggering webhook:', err));
+    }
   };
 
   const updateBlock = (pageId: string, blockId: string, updates: Partial<Block>) => {
+    const page = workspace.pages.find(p => p.id === pageId);
+    const block = page?.blocks.find(b => b.id === blockId);
+
     setWorkspace((prev) => ({
       ...prev, // Spread prev
       pages: prev.pages.map((p) =>
@@ -238,7 +326,7 @@ export const useWorkspace = () => {
           ? {
             ...p,
             blocks: p.blocks.map((b) =>
-              b.id === blockId ? { ...b, ...updates } : b
+              b.id === blockId ? { ...b, ...updates, updatedAt: new Date() } : b
             ),
             updatedAt: new Date(),
           }
@@ -246,9 +334,26 @@ export const useWorkspace = () => {
       ),
       updatedAt: new Date()
     }));
+
+    // Trigger webhook for block update
+    if (workspace.id && block) {
+      const updatedBlock = { ...block, ...updates };
+      console.log('[useWorkspace] Triggering webhook for block.updated', { pageId: pageId, blockId: blockId, workspaceId: workspace.id });
+      triggerWebhooks(workspace.id, 'block.updated', {
+        event: 'block.updated',
+        workspaceId: workspace.id,
+        pageId: pageId,
+        blockId: blockId,
+        timestamp: Date.now(),
+        data: updatedBlock,
+      }).catch(err => console.error('[useWorkspace] Error triggering webhook:', err));
+    }
   };
 
   const deleteBlock = (pageId: string, blockId: string) => {
+    const page = workspace.pages.find(p => p.id === pageId);
+    const block = page?.blocks.find(b => b.id === blockId);
+
     setWorkspace((prev) => ({
       ...prev, // Spread prev
       pages: prev.pages.map((p) =>
@@ -262,20 +367,33 @@ export const useWorkspace = () => {
       ),
       updatedAt: new Date()
     }));
+
+    // Trigger webhook for block deletion
+    if (workspace.id && block) {
+      console.log('[useWorkspace] Triggering webhook for block.deleted', { pageId: pageId, blockId: blockId, workspaceId: workspace.id });
+      triggerWebhooks(workspace.id, 'block.deleted', {
+        event: 'block.deleted',
+        workspaceId: workspace.id,
+        pageId: pageId,
+        blockId: blockId,
+        timestamp: Date.now(),
+        data: block,
+      }).catch(err => console.error('[useWorkspace] Error triggering webhook:', err));
+    }
   };
 
   const currentPage = workspace.pages.find((p) => p.id === currentPageId);
   const updatePageProperties = (pageId: string, properties: any) => {
-  setWorkspace((prev) => ({
-    ...prev,
-    pages: prev.pages.map((p) =>
-      p.id === pageId 
-        ? { ...p, properties, updatedAt: new Date() } 
-        : p
-    ),
-    updatedAt: new Date()
-  }));
-};
+    setWorkspace((prev) => ({
+      ...prev,
+      pages: prev.pages.map((p) =>
+        p.id === pageId
+          ? { ...p, properties, updatedAt: new Date() }
+          : p
+      ),
+      updatedAt: new Date()
+    }));
+  };
 
 
   // Filter out archived pages for main view
@@ -292,6 +410,7 @@ export const useWorkspace = () => {
     restorePage,
     permanentlyDeletePage,
     addPage,
+    addPageFromTemplate,
     deletePage,
     updatePageTitle,
     updatePageIcon,

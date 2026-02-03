@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Shield, Palette, Database, Globe, Save } from 'lucide-react';
+import { ArrowLeft, User, Bell, Shield, Palette, Database, Globe, Save, Users, Share2, LogOut } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useToast } from '../hooks/use-toast';
-import { Logo } from '../components/Logo';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase/config';
 
+import { ShareDialog } from '../components/workspace/ShareDialog';
+import { MembersList } from '../components/workspace/MembersList';
+
+// The Settings page allows users to configure their workspace and account.
+// It currently handles local preferences like Dark Mode and Notifications,
+// and effectively serves as a dashboard for workspace styling and account management.
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -15,6 +22,18 @@ export const Settings: React.FC = () => {
   const [autoSave, setAutoSave] = useState(true);
   const [language, setLanguage] = useState('en');
 
+  // Workspace sharing state
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [membersRefreshTrigger, setMembersRefreshTrigger] = useState(0);
+
+  // These would come from your workspace context/store in production
+  const currentWorkspaceId = 'default'; // Replace with actual workspace ID
+  const currentUserId = 'local-user'; // Replace with actual user ID
+  const workspaceOwnerId = 'local-user'; // Replace with actual owner ID
+  const workspaceName = 'My Workspace'; // Replace with actual workspace name
+
+  // Save current settings to localStorage.
+  // In a real production app, this would likely also sync with the backend.
   const handleSave = () => {
     // Save settings to localStorage or backend
     localStorage.setItem('worklin-settings', JSON.stringify({
@@ -28,6 +47,32 @@ export const Settings: React.FC = () => {
       description: "Your preferences have been saved successfully.",
       duration: 3000,
     });
+  };
+
+  const handleMemberAdded = () => {
+    // Refresh members list
+    setMembersRefreshTrigger(prev => prev + 1);
+  };
+
+  // Handle user logout using Firebase Auth
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+        duration: 3000,
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
   };
 
   return (
@@ -45,7 +90,7 @@ export const Settings: React.FC = () => {
               <ArrowLeft size={18} />
               Back
             </Button>
-            <Logo size={32} />
+
           </div>
           <Button onClick={handleSave} className="gap-2">
             <Save size={18} />
@@ -59,6 +104,38 @@ export const Settings: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
 
         <div className="space-y-6">
+          {/* Workspace Sharing Section - NEW */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Workspace Sharing
+                  </CardTitle>
+                  <CardDescription>
+                    Manage who has access to this workspace
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => setShowShareDialog(true)}
+                  className="gap-2"
+                >
+                  <Share2 size={16} />
+                  Share Workspace
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <MembersList
+                workspaceId={currentWorkspaceId}
+                ownerId={workspaceOwnerId}
+                currentUserId={currentUserId}
+                refreshTrigger={membersRefreshTrigger}
+              />
+            </CardContent>
+          </Card>
+
           {/* Appearance */}
           <Card>
             <CardHeader>
@@ -226,8 +303,39 @@ export const Settings: React.FC = () => {
               </select>
             </CardContent>
           </Card>
+
+          {/* Logout Section */}
+          <Card className="border-red-200 dark:border-red-900/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                <LogOut className="h-5 w-5" />
+                Logout
+              </CardTitle>
+              <CardDescription>Sign out of your account</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="destructive"
+                onClick={handleLogout}
+                className="gap-2"
+              >
+                <LogOut size={18} />
+                Logout from WorkLin
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        workspaceId={currentWorkspaceId}
+        workspaceName={workspaceName}
+        currentUserId={currentUserId}
+        onMemberAdded={handleMemberAdded}
+      />
     </div>
   );
 };
