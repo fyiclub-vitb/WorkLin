@@ -13,8 +13,6 @@ const STATIC_ASSETS = [
     '/index.html',
     '/manifest.json',
     '/logo.svg',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png',
 ];
 
 // API routes that support offline sync
@@ -330,8 +328,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: data.body || 'New notification from WorkLin',
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
+        icon: '/logo.svg',
+        badge: '/logo.svg',
         vibrate: [100, 50, 100],
         data: {
             url: data.url || '/',
