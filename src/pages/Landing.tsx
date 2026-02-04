@@ -23,7 +23,10 @@ import {
   Globe,
   Code,
   Search,
-  BarChart3
+  BarChart3,
+  Twitter,
+  Linkedin,
+  Mail
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useDarkMode } from '../hooks/useDarkMode';
@@ -798,8 +801,30 @@ export const Landing: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                aria-label="GitHub"
               >
                 <Github className="w-6 h-6" />
+              </a>
+              <a
+                href="#"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                aria-label="Twitter"
+              >
+                <Twitter className="w-6 h-6" />
+              </a>
+              <a
+                href="#"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                aria-label="LinkedIn"
+              >
+                <Linkedin className="w-6 h-6" />
+              </a>
+              <a
+                href="mailto:contact@worklin.dev"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                aria-label="Email"
+              >
+                <Mail className="w-6 h-6" />
               </a>
             </div>
 
