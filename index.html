@@ -6,16 +6,66 @@
     
     <!-- Set the favicon and app icons -->
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
     
     <!-- Theme color for mobile browsers (shows in address bar on some phones) -->
     <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#2563eb" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1e1e1e" />
     
     <!-- Responsive viewport settings for mobile devices -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
     <!-- Page title that shows in the browser tab -->
     <title>WorkLin – Open Source Notion Alternative</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="WorkLin is a free, open-source Notion alternative for notes, documents, and team collaboration. Works offline with PWA support." />
+    <meta name="keywords" content="notion alternative, notes app, workspace, collaboration, pwa, offline" />
+    <meta name="author" content="WorkLin Team" />
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="WorkLin – Open Source Notion Alternative" />
+    <meta property="og:description" content="A free, open-source workspace for notes, documents, and collaboration. Works offline." />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    <meta property="og:url" content="https://worklin.app" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="WorkLin – Open Source Notion Alternative" />
+    <meta name="twitter:description" content="A free, open-source workspace for notes, documents, and collaboration." />
+    <meta name="twitter:image" content="/icons/icon-512x512.png" />
+    
+    <!-- iOS Specific Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="WorkLin" />
+    
+    <!-- Android/Chrome Specific -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="WorkLin" />
+    
+    <!-- Microsoft/Windows Specific -->
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-config" content="none" />
+    
+    <!-- Disable automatic phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- Preconnect to external domains for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- DNS prefetch for Firebase -->
+    <link rel="dns-prefetch" href="https://firebaseio.com" />
+    <link rel="dns-prefetch" href="https://googleapis.com" />
     
     <script>
       // Prevent flash of unstyled content when using dark mode
@@ -32,10 +82,73 @@
         }
       })();
     </script>
+    
+    <style>
+      /* Critical CSS for above-the-fold content - prevents FOUC */
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      
+      /* Safe area insets for notched devices */
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top, 0px);
+        --safe-area-inset-right: env(safe-area-inset-right, 0px);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-area-inset-left: env(safe-area-inset-left, 0px);
+      }
+      
+      /* Loading state */
+      .loading-screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+      }
+      
+      .dark .loading-screen {
+        background: #1e1e1e;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      .dark .loading-spinner {
+        border-color: #374151;
+        border-top-color: #3b82f6;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Hide loading screen when React mounts */
+      #root:not(:empty) + .loading-screen,
+      #root:not(:empty) ~ .loading-screen {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <!-- Root div where React will render the entire application -->
     <div id="root"></div>
+    
+    <!-- Loading screen shown before React hydrates -->
+    <noscript>
+      <div style="padding: 20px; text-align: center;">
+        <h1>JavaScript Required</h1>
+        <p>WorkLin requires JavaScript to run. Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
     
     <!-- Load the main React application -->
     <script type="module" src="/src/main.tsx"></script>
