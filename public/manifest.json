@@ -1,0 +1,69 @@
+{
+    "name": "WorkLin",
+    "short_name": "WorkLin",
+    "description": "Open Source Notion Alternative - Your personal workspace for notes, documents, and collaboration",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1e1e1e",
+    "theme_color": "#2563eb",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "en",
+    "categories": [
+        "productivity",
+        "business",
+        "utilities"
+    ],
+    "icons": [
+        {
+            "src": "/logo.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/screenshots/desktop.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "WorkLin Desktop View"
+        },
+        {
+            "src": "/screenshots/mobile.png",
+            "sizes": "390x844",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "WorkLin Mobile View"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "New Page",
+            "short_name": "New",
+            "description": "Create a new page",
+            "url": "/app?action=new-page",
+            "icons": [
+                {
+                    "src": "/logo.svg",
+                    "sizes": "any"
+                }
+            ]
+        },
+        {
+            "name": "Search",
+            "short_name": "Search",
+            "description": "Search your pages",
+            "url": "/app/search",
+            "icons": [
+                {
+                    "src": "/logo.svg",
+                    "sizes": "any"
+                }
+            ]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false
+}

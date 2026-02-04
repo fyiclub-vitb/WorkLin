@@ -12,6 +12,10 @@ import { Toaster } from '../components/ui/toaster';
 import { PageHeader } from '../components/PageHeader';
 import { subscribeToAuth } from '../lib/firebase/auth';
 
+// Mobile components
+import { MobileBottomNav } from '../components/mobile';
+import { useIsMobile } from '../hooks/useMobileDetect';
+
 // The Workspace component is the core application layout.
 // It includes the Sidebar for navigation and the Main Content area which switches
 // between the Page Editor, Search, Analytics, etc., based on the current URL.
@@ -44,6 +48,7 @@ export const Workspace: React.FC = () => {
   } = useWorkspace();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
 
   // Check if user is logged in (Firebase auth).
   // If not, redirect to the login page.
@@ -191,6 +196,14 @@ export const Workspace: React.FC = () => {
       )}
 
       <Toaster />
+
+      {/* Mobile bottom navigation - only shown on mobile devices */}
+      {isMobile && (
+        <MobileBottomNav
+          onNewPage={() => addPage()}
+          currentPageId={currentPageId}
+        />
+      )}
     </div>
   );
 };
